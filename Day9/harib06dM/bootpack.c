@@ -19,7 +19,7 @@ struct MEMMAN {         /* メモリ管理 */
 unsigned int memtest(unsigned int start, unsigned int end);
 void memman_init(struct MEMMAN *man);
 unsigned int memman_total(struct MEMMAN *man);
-unsigned int memman_alloc(struct MEMAN *man, unsigned int size);
+unsigned int memman_alloc(struct MEMMAN *man, unsigned int size);
 int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size);
 
 void HariMain(void)
@@ -29,7 +29,7 @@ void HariMain(void)
     int mx, my, i;
     unsigned int memtotal;
     struct MOUSE_DEC mdec; /* マウスのデータを構造体で管理（タグ：mdec） */
-    struct MEMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+    struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 
     init_gdtidt(); /* GDT、IDTの初期化 */
     init_pic(); /* PICの初期か */
@@ -58,8 +58,7 @@ void HariMain(void)
     /* キーボードとマウスの許可は上に移動 */
     /* 理想的な割り込み処理 */
 
-    i = memtest(0x00400000, 0xbfffffff) / (1024 * 1024);
-    sprintf(s, "memory %dMB", i);
+    sprintf(s, "memory %dMB   free : %dKB", memtotal / (1024 *1024), memman_total(memman) / 1024);
     putfonts8_asc(binfo->vram, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
 
     for (;;) {
@@ -211,8 +210,46 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size)
             /* 前の空き容量にまとめられる */
             man->free[i - 1].size += size;
             if (i < man->frees) {
-
+                /* 後ろもある */
+                if (addr + size == man->free[i].addr) {
+                    /* なんと後ろともまとめられる */
+                    man->free[i - 1].size += man->free[i].size;
+                    /* man->free[i]の削除 */
+                    /* free[i]がなくなったので前へ詰める */
+                    man->frees--;
+                    for (; i < man->frees; i++) {
+                        man->free[i] = man->free[i + 1]; /* 構造体の代入 */
+                    }
+                }
             }
+            return 0; /* 成功終了 */
         }
     }
+    /* 前とはまとめられなかった */
+    if (i < man->frees) {
+        if (addr + size == man->free[i].addr) {
+            /* 後ろとはまとめられる */
+            man->free[i].addr = addr;
+            man->free[i].size += size;
+            return 0;   /* 成功終了 */
+        }
+    }
+    /* 前にも後ろにもまとめられない */
+    if (man->frees < MEMMAN_FREES) {
+        /* free[i]より後ろを、後ろへずらして、隙間を作る */
+        for (j = man->frees; j > i; j--) {
+            man->free[j] = man->free[j -1];
+        }
+        man->frees++;
+        if (man->maxfrees < man->frees) {
+            man->maxfrees = man->frees; /* 最大値を更新 */
+        }
+        man->free[i].addr = addr;
+        man->free[i].size= size;
+        return 0; /* 成功終了 */
+    }
+    /* 後ろにずらせなかった */
+    man->losts++;
+    man->lostsize += size;
+    return -1; /* 失敗終了 */
 }
