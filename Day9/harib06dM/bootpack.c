@@ -174,7 +174,7 @@ unsigned int memman_alloc(struct MEMMAN *man, unsigned int size)
 /* 確保 */
 {
     unsigned int i,a;   /* i:メモリの確保した空き情報のカウンタ, a:アドレス格納用 */
-    for (i = 0; i < man->frees; i++) {      /* fressの最後までを繰り返しで確認 */
+    for (i = 0; i < man->frees; i++) {      /* freesの最後までを繰り返しで確認 */
         if (man->free[i].size >= size) {    /* 必要なサイズ以上の空きがあったなら */
             /* 十分な広さのあきを発見 */
             a = man->free[i].addr;          /* 変数aにアドレスを格納 */
