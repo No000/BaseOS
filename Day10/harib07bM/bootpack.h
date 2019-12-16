@@ -154,15 +154,24 @@ int memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size);
 
 /* sheet.c */
 #define MAX_SHEETS      256
+/* 下敷き1枚の情報 */
 struct SHEET {
-    unsigned char *vram;
-    int xsize, ysize, top;
-    struct SHEET *sheets[MAX_SHEETS];
-    struct SHEET sheets0[MAX_SHEETS];
+    unsigned char *buf;
+    int bxsize, bysize, vx0, vy0, col_inv, height, flags;
+    /* boxsize:下敷きの大きさx, bysize:下敷きの大きさy, vx0:下敷きの位置x, vy0:下敷きの位置y */
+    /*col_inv:透明色の番号, height:下敷きの高さ, flags:下敷きの設定情報 */
+};
+/* 各種下敷きの管理情報 */
+struct SHTCTL {
+    unsigned char *vram; /* vramのアドレス */
+    int xsize, ysize, top; /* xsize:画面の大きさx, ysize:画面の大きさy, top:1番上の下敷きの高さ */
+    struct SHEET *sheets[MAX_SHEETS]; /* SHEETのデータを並び変えるためにアドレスを管理 */
+    struct SHEET sheets0[MAX_SHEETS]; /* SHEETのデータを256枚分用意 */
 };
 struct SHTCTL *shtctl_init(struct MEMMAN *memman, unsigned char *vram, int xsize, int ysize);
 struct SHEET *sheet_alloc(struct SHTCTL *ctl);
-void sheet_setbuf(struct SHEET *sht, unsigned char *buf, int xsize, int ysizem int col_inv);
-void sheet_updown(struct SHTCTL*ctl, struct char *sht, int height);
+void sheet_setbuf(struct SHEET *sht, unsigned char *buf, int xsize, int ysize, int col_inv);
+void sheet_updown(struct SHTCTL *ctl, struct SHEET *sht, int height);
 void sheet_refresh(struct SHTCTL *ctl);
-void sheet_slide()
+void sheet_slide(struct SHTCTL *ctl, struct SHEET *sht, int vx0, int vy0);
+void sheet_free(struct SHTCTL *ctl, struct SHEET *sht);
