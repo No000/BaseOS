@@ -164,7 +164,7 @@ struct SHEET {
 /* 各種下敷きの管理情報 */
 struct SHTCTL {
     unsigned char *vram; /* vramのアドレス */
-    int xsize, ysize, top; /* xsize:画面の大きさx, ysize:画面の大きさy, top:1番上の下敷きの高さ */
+    int xsize, ysize, top; /* xsize:全体画面の大きさx, ysize:全体画面の大きさy, top:1番上の下敷きの高さ */
     struct SHEET *sheets[MAX_SHEETS]; /* SHEETのデータを並び変えるためにアドレスを管理 */
     struct SHEET sheets0[MAX_SHEETS]; /* SHEETのデータを256枚分用意 */
 };
