@@ -52,6 +52,31 @@ void sheet_setbuf(struct SHEET *sht, unsigned char *buf, int xsize, int ysize, i
   return;
 }
 
+/* 一部対応させる描きなおし関数（ローカル） */
+void sheet_refreshsub(struct SHTCTL *ctl, int vx0, int vy0, int vx1, int vy1)
+{
+  int h, bx, by, vx, vy;  /* h:, bx:, by:, vx:, vy: */
+  unsigned char *buf, c, *vram = ctl->vram; /* buf:, c:, vram: */
+  struct SHEET *sht;  /* シート一枚分のデータ */
+  for (h = 0; h <= ctl->top; h++) { /* 下から一番上の下敷きまでを */
+    sht = ctl->sheets[h];   /*  1枚ずつシートの情報をセットし*/
+    buf = sht->buf; /* バッファに画素の情報を格納 */
+    for (by = 0; by < sht->bysize; by++) {  /* 1画素ずつのy座標 */
+      vy = sht->vy0 + by;   /* yの下敷きのサイズを設定 */
+      for (bx = 0; bx < sht->bxsize; bx++) {  /* 1画素ずつのx座標 */
+        vx = sht->vx0 + bx; /* xの下敷きのサイズを設定 */
+        if (vx0 <= vx && vx < vx1 && vy0 <= vy && vy < vy1) {   /* 描画できる範囲を指定 */
+          c = buf[by * sht->bxsize + bx]; /* 描画する画素のデータの取得 */
+          if (c != sht->col_inv) {  /* 透明色以外を */
+            vram[vy * ctl->xsize + vx] = c; /* vramに書き込む */
+          }
+        }
+      }
+    }
+  }
+  return;
+}
+
 /* 下敷きの高さを設定する関数 */
 void sheet_updown(struct SHTCTL *ctl, struct SHEET *sht, int height)
 {
@@ -85,7 +110,7 @@ void sheet_updown(struct SHTCTL *ctl, struct SHEET *sht, int height)
       }
       ctl->top--; /* 表示中の下敷きが一つ減るので一番上の高さが減る */
     }
-    sheet_refresh(ctl); /* 新しい下敷きの情報に沿って画面を描き直す */
+    sheet_refreshsub(ctl, sht->vx0, sht->vy0, sht->vx0 + sht->bxsize, sht->vy0 + sht->bysize); /* 新しい下敷きの情報に沿って画面を描き直す */
   } else if (old < height) {    /* もし高さが、設定前より高くなるのなら */
     if (old >= 0) {   /* 設定前の高さが0以上（表示）だったら */
       /* 間のものを押し上げる */
@@ -103,39 +128,28 @@ void sheet_updown(struct SHTCTL *ctl, struct SHEET *sht, int height)
       ctl->sheets[height] = sht;  /* 用意できた高さへデータを挿入 */
       ctl->top++; /* 表示中の下敷きが1つ増えるので、一番上の高さが増える */
     }
-    sheet_refresh(ctl); /* 新しい下敷きの情報に沿って画面を描きなおす */
+    sheet_refreshsub(ctl, sht->vx0, sht->vy0, sht->vx0 + sht->bxsize, sht->vy0 + sht->bysize); /* 新しい下敷きの情報に沿って画面を描きなおす */
   }
   return;
 }
 
-void sheet_refresh(struct SHTCTL *ctl)
+void sheet_refresh(struct SHTCTL *ctl, struct SHEET *sht, int bx0, int by0, int bx1, int by1)
 {
-  int h, bx, by, vx, vy;  /* h:, bx:, by:, vx:, vy: */
-  unsigned char *buf, c, *vram = ctl->vram; /* buf:, c:, vram: */
-  struct SHEET *sht;  /* シート一枚分のデータ */
-  for (h = 0; h <= ctl->top; h++) { /* 下から一番上の下敷きまでを */
-    sht = ctl->sheets[h];   /*  1枚ずつシートの情報をセットし*/
-    buf = sht->buf; /* バッファに画素の情報を格納 */
-    for (by = 0; by < sht->bysize; by++) {
-      vy = sht->vy0 + by;   /* yの下敷きのサイズを設定 */
-      for (bx = 0; bx < sht->bxsize; bx++) {
-        vx = sht->vx0 + bx; /* xの下敷きのサイズを設定 */
-        c = buf[by * sht->bxsize + bx]; /* 描画する画素のデータの取得 */
-        if (c != sht->col_inv) {  /* 透明色以外を */
-          vram[vy * ctl->xsize + vx] = c; /* vramに書き込む */
-        }
-      }
-    }
+  if (sht->height >= 0) {   /* もしも表示中なら、新しい下敷きの情報に沿って画面を描きなおす */
+    sheet_refreshsub(ctl, sht->vx0 + bx0, sht->vy0 + by0, sht->vx0 + bx1, sht->vy0 + by1); 
+    /* 画面全体を対象としてsheet_refreshsubを実行 */
   }
   return;
 }
 
 void sheet_slide(struct SHTCTL *ctl, struct SHEET *sht, int vx0, int vy0)
 {
+  int old_vx0 = sht->vx0, old_vy0 = sht->vy0; /* 移動前の座標を記録 */
   sht->vx0 = vx0; /* 移動したx座標の情報を格納 */
   sht->vy0 = vy0; /* 移動したy座標の情報を格納 */
   if (sht->height >= 0) { /* もしも表示中なら(下に描画があれば) */
-    sheet_refresh(ctl); /* 新しい下敷きの情報に沿って画面を描き直す */
+    sheet_refreshsub(ctl, old_vx0, old_vy0, old_vx0 + sht->bxsize, old_vy0 + sht->bysize); /* 移動前の描きなおし */
+    sheet_refreshsub(ctl, vx0, vy0, vx0 + sht->bxsize, vy0 + sht->bysize); /* 移動後の描きなおし */
   }
   return;
 }

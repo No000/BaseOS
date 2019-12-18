@@ -49,7 +49,7 @@ void HariMain(void)
     putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
     sprintf(s, "memory %dMB   free : %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024); 
     putfonts8_asc(buf_back, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
-    sheet_refresh(shtctl);  /* 画面の描画しなおし */
+    sheet_refresh(shtctl, sht_back, 0, 0, binfo->scrnx, 48);  /* 画面の描画しなおし */
     /* キーボードとマウスの許可は上に移動 */
     /* 理想的な割り込み処理 */
 
@@ -64,7 +64,7 @@ void HariMain(void)
                 sprintf(s, "%02X", i); /* メモリのデータの参照 */
                 boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 16, 15, 31); /* 画面のリセット */
                 putfonts8_asc(buf_back, binfo->scrnx, 0, 16, COL8_FFFFFF, s); /* 文字の表示 */
-                sheet_refresh(shtctl);
+                sheet_refresh(shtctl, sht_back, 0, 16, 16, 32);
             } else if (fifo8_status(&mousefifo) != 0) {         /* もしもマウスのデータが来ていたら */
                 i = fifo8_get(&mousefifo);                      /* マウスのデータをバッファから取得し */
                 io_sti();                                       /* IFに1をセット（外部割り込みの許可） */
@@ -82,6 +82,7 @@ void HariMain(void)
                     }
                     boxfill8(buf_back, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);       /* ボックスの描写 */
                     putfonts8_asc(buf_back, binfo->scrnx, 32, 16, COL8_FFFFFF, s);                   /* 文字の描写 */
+                    sheet_refresh(shtctl, sht_back, 32, 16, 32 + 15 * 8, 32);
                     /* マウスカーソルの移動 */
                     mx += mdec.x;
                     my += mdec.y;
@@ -100,6 +101,7 @@ void HariMain(void)
                     sprintf(s, "(%3d, %3d)", mx, my);
                     boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 0, 79, 15);
                     putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+                    sheet_refresh(shtctl, sht_back, 0, 0, 80, 16);
                     sheet_slide(shtctl, sht_mouse, mx, my);
                 }
             }
