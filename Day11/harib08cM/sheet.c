@@ -20,6 +20,7 @@ struct SHTCTL *shtctl_init(struct MEMMAN *memman, unsigned char *vram, int xsize
   ctl->top   = -1;  /* シートは1枚もない */
   for (i = 0; i < MAX_SHEETS; i++) {  /* シートの最大数まで処理を行う */
     ctl->sheets0[i].flags = 0; /* 未使用マークを添付 */
+    ctl->sheets0[i].ctl = ctl; /* 所属を記録 */
   }
 err:  /* エラーならここへショートカット */
   return ctl; /* 構造体を返す */
@@ -90,8 +91,9 @@ void sheet_refreshsub(struct SHTCTL *ctl, int vx0, int vy0, int vx1, int vy1)
 }
 
 /* 下敷きの高さを設定する関数 */
-void sheet_updown(struct SHTCTL *ctl, struct SHEET *sht, int height)
+void sheet_updown(struct SHEET *sht, int height)
 {
+  struct SHTCTL *ctl = sht->ctl; /* 元々引数で渡していたデータを格納 */
   int h, old = sht->height; /* 設定前の高さを記憶する */
 
   /* 指定が低すぎや高すぎだったら、修正を行う */
@@ -145,7 +147,7 @@ void sheet_updown(struct SHTCTL *ctl, struct SHEET *sht, int height)
   return;
 }
 
-void sheet_refresh(struct SHTCTL *ctl, struct SHEET *sht, int bx0, int by0, int bx1, int by1)
+void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bx1, int by1)
 {
   if (sht->height >= 0) {   /* もしも表示中なら、新しい下敷きの情報に沿って画面を描きなおす */
     sheet_refreshsub(ctl, sht->vx0 + bx0, sht->vy0 + by0, sht->vx0 + bx1, sht->vy0 + by1); 
@@ -154,22 +156,22 @@ void sheet_refresh(struct SHTCTL *ctl, struct SHEET *sht, int bx0, int by0, int 
   return;
 }
 
-void sheet_slide(struct SHTCTL *ctl, struct SHEET *sht, int vx0, int vy0)
+void sheet_slide(struct SHEET *sht, int vx0, int vy0)
 {
   int old_vx0 = sht->vx0, old_vy0 = sht->vy0; /* 移動前の座標を記録 */
   sht->vx0 = vx0; /* 移動したx座標の情報を格納 */
   sht->vy0 = vy0; /* 移動したy座標の情報を格納 */
   if (sht->height >= 0) { /* もしも表示中なら(下に描画があれば) */
-    sheet_refreshsub(ctl, old_vx0, old_vy0, old_vx0 + sht->bxsize, old_vy0 + sht->bysize); /* 移動前の描きなおし */
-    sheet_refreshsub(ctl, vx0, vy0, vx0 + sht->bxsize, vy0 + sht->bysize); /* 移動後の描きなおし */
+    sheet_refreshsub(sht->ctlctl, old_vx0, old_vy0, old_vx0 + sht->bxsize, old_vy0 + sht->bysize); /* 移動前の描きなおし */
+    sheet_refreshsub(sht->ctl, vx0, vy0, vx0 + sht->bxsize, vy0 + sht->bysize); /* 移動後の描きなおし */
   }
   return;
 }
 
-void sheet_free(struct SHTCTL *ctl, struct SHEET *sht)
+void sheet_free(struct SHEET *sht)
 {
   if (sht->height >= 0) { /* 表示中なら */
-    sheet_updown(ctl, sht, -1);  /* 表示中ならまず非表示にする */
+    sheet_updown(sht, -1);  /* 表示中ならまず非表示にする */
   }
   sht->flags = 0; /* 未使用マークを添付 */
   return;

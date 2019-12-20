@@ -39,17 +39,17 @@ void HariMain(void)
     sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99); /* マウスのバッファのセット */
     init_screen8(buf_back, binfo->scrnx, binfo->scrny); /* 背景を描画 */
     init_mouse_cursor8(buf_mouse, 99);  /* マウスを描画 */
-    sheet_slide(shtctl, sht_back, 0, 0);    /* 背景の位置指定 */
+    sheet_slide(sht_back, 0, 0);    /* 背景の位置指定 */
     mx = (binfo->scrnx - 16) / 2; /* 画面中央になるx座標 */
     my = (binfo->scrny - 28 -16) / 2; /* 画面中央になるy座標 */
-    sheet_slide(shtctl, sht_mouse, mx, my); /* マウスの位置指定 */
-    sheet_updown(shtctl, sht_back,  0); /* 背景の下敷きの高さを指定 */
-    sheet_updown(shtctl, sht_mouse, 1); /* マウスの下敷きの高さを指定 */
+    sheet_slide(sht_mouse, mx, my); /* マウスの位置指定 */
+    sheet_updown(sht_back,  0); /* 背景の下敷きの高さを指定 */
+    sheet_updown(sht_mouse, 1); /* マウスの下敷きの高さを指定 */
     sprintf(s, "(%3d, %3d)", mx, my);
     putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
     sprintf(s, "memory %dMB   free : %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024); 
     putfonts8_asc(buf_back, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
-    sheet_refresh(shtctl, sht_back, 0, 0, binfo->scrnx, 48);  /* 画面の描画しなおし */
+    sheet_refresh(sht_back, 0, 0, binfo->scrnx, 48);  /* 画面の描画しなおし */
     /* キーボードとマウスの許可は上に移動 */
     /* 理想的な割り込み処理 */
 
@@ -64,7 +64,7 @@ void HariMain(void)
                 sprintf(s, "%02X", i); /* メモリのデータの参照 */
                 boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 16, 15, 31); /* 画面のリセット */
                 putfonts8_asc(buf_back, binfo->scrnx, 0, 16, COL8_FFFFFF, s); /* 文字の表示 */
-                sheet_refresh(shtctl, sht_back, 0, 16, 16, 32);
+                sheet_refresh(sht_back, 0, 16, 16, 32);
             } else if (fifo8_status(&mousefifo) != 0) {         /* もしもマウスのデータが来ていたら */
                 i = fifo8_get(&mousefifo);                      /* マウスのデータをバッファから取得し */
                 io_sti();                                       /* IFに1をセット（外部割り込みの許可） */
@@ -82,7 +82,7 @@ void HariMain(void)
                     }
                     boxfill8(buf_back, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);       /* ボックスの描写 */
                     putfonts8_asc(buf_back, binfo->scrnx, 32, 16, COL8_FFFFFF, s);                   /* 文字の描写 */
-                    sheet_refresh(shtctl, sht_back, 32, 16, 32 + 15 * 8, 32);
+                    sheet_refresh(sht_back, 32, 16, 32 + 15 * 8, 32);
                     /* マウスカーソルの移動 */
                     mx += mdec.x;
                     my += mdec.y;
@@ -101,8 +101,8 @@ void HariMain(void)
                     sprintf(s, "(%3d, %3d)", mx, my);
                     boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 0, 79, 15);
                     putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
-                    sheet_refresh(shtctl, sht_back, 0, 0, 80, 16);
-                    sheet_slide(shtctl, sht_mouse, mx, my);
+                    sheet_refresh(sht_back, 0, 0, 80, 16);
+                    sheet_slide(sht_mouse, mx, my);
                 }
             }
         }
