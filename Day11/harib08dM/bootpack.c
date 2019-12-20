@@ -3,6 +3,8 @@
 #include "bootpack.h"
 #include <stdio.h>
 
+void make_window8(unsigned char *buf, int xsize, int ysize, chae *title);
+
 void HariMain(void)
 {
     struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
@@ -107,4 +109,29 @@ void HariMain(void)
             }
         }
     }
+}
+
+void make_window8(unsigned char *buf, int xsize, int ysize, char *title)
+{
+    static char closebtn[14][16] = {
+        "OOOOOOOOOOOOOOO@",
+        "OQQQQQQQQQQQQQ$@",
+        "OQQQQQQQQQQQQQ$@",
+        "OQQQ@@QQQQ@@QQ$@",
+        "OQQQQ@@QQ@@QQQ&@",
+        "OQQQQQ@@@@QQQQ$@",
+        "OQQQQQQ@@QQQQQ$@",
+        "OQQQQQ@@@@QQQQ$@",
+        "OQQQQ@@QQ@@QQQ$@",
+        "OQQQ@@QQQQ@@QQ$@",
+        "OQQQQQQQQQQQQQ$@",
+        "OQQQQQQQQQQQQQ$@",
+        "O$$$$$$$$$$$$$$@",
+        "@@@@@@@@@@@@@@@@"
+    };
+    int x, y;
+    char c;
+    boxfill8(buf, xsize, COL8_C6C6C6, 0,        0,      xsize - 1, 0        );
+    boxfill8(buf, xsize, COL8_FFFFFF, 1,        1,      xsize -2, 0         );
+    
 }
