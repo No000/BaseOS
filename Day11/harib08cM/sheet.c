@@ -150,7 +150,7 @@ void sheet_updown(struct SHEET *sht, int height)
 void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bx1, int by1)
 {
   if (sht->height >= 0) {   /* もしも表示中なら、新しい下敷きの情報に沿って画面を描きなおす */
-    sheet_refreshsub(ctl, sht->vx0 + bx0, sht->vy0 + by0, sht->vx0 + bx1, sht->vy0 + by1); 
+    sheet_refreshsub(sht->ctl, sht->vx0 + bx0, sht->vy0 + by0, sht->vx0 + bx1, sht->vy0 + by1); 
     /* 画面全体を対象としてsheet_refreshsubを実行 */
   }
   return;
@@ -162,7 +162,7 @@ void sheet_slide(struct SHEET *sht, int vx0, int vy0)
   sht->vx0 = vx0; /* 移動したx座標の情報を格納 */
   sht->vy0 = vy0; /* 移動したy座標の情報を格納 */
   if (sht->height >= 0) { /* もしも表示中なら(下に描画があれば) */
-    sheet_refreshsub(sht->ctlctl, old_vx0, old_vy0, old_vx0 + sht->bxsize, old_vy0 + sht->bysize); /* 移動前の描きなおし */
+    sheet_refreshsub(sht->ctl, old_vx0, old_vy0, old_vx0 + sht->bxsize, old_vy0 + sht->bysize); /* 移動前の描きなおし */
     sheet_refreshsub(sht->ctl, vx0, vy0, vx0 + sht->bxsize, vy0 + sht->bysize); /* 移動後の描きなおし */
   }
   return;
