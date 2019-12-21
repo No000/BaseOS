@@ -10,7 +10,7 @@ void HariMain(void)
     struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
     char s[40], keybuf[32], mousebuf[128]; /* 各種バッファ */
     int mx, my, i;
-    unsigned int memtotal;
+    unsigned int memtotal, count = 0;
     struct MOUSE_DEC mdec; /* マウスのデータを構造体で管理（タグ：mdec） */
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
     struct SHTCTL *shtctl;  /* シートの管理 */
@@ -38,23 +38,21 @@ void HariMain(void)
     sht_mouse = sheet_alloc(shtctl);    /* マウスのシートの確保 */
     sht_win   = sheet_alloc(shtctl);    /* ウィンドウ用のメモリ確保 */
     buf_back  = (unsigned char *) memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);     /* 背景バッファのメモリ確保 */
-    buf_win   = (unsigned char *) memman_alloc_4k(memman, 160 *68); /* ウィンドウバッファのメモリ確保 */
+    buf_win   = (unsigned char *) memman_alloc_4k(memman, 160 *52); /* ウィンドウバッファのメモリ確保 */
     sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1); /* 透明色なし */
     sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99); /* マウスのバッファのセット */
-    sheet_setbuf(sht_win, buf_win, 160, 68, -1); /* 透明色なし */
+    sheet_setbuf(sht_win, buf_win, 160, 52, -1); /* 透明色なし */
     init_screen8(buf_back, binfo->scrnx, binfo->scrny); /* 背景を描画 */
     init_mouse_cursor8(buf_mouse, 99);  /* マウスを描画 */
-    make_window8(buf_win, 160, 68, "window");
-    putfonts8_asc(buf_win, 160, 24, 28, COL8_000000, "Welcome to");
-    putfonts8_asc(buf_win, 160, 24, 44, COL8_000000, "Base-OS!");
+    make_window8(buf_win, 160, 52, "counter"); /* カウンターウィンドウ */
     sheet_slide(sht_back, 0, 0);    /* 背景の位置指定 */
     mx = (binfo->scrnx - 16) / 2; /* 画面中央になるx座標 */
     my = (binfo->scrny - 28 -16) / 2; /* 画面中央になるy座標 */
     sheet_slide(sht_mouse, mx, my); /* マウスの位置指定 */
     sheet_slide(sht_win, 80, 72);
     sheet_updown(sht_back,  0); /* 背景の下敷きの高さを指定 */
-    sheet_updown(sht_mouse, 1); /* マウスの下敷きの高さを指定 */
-    sheet_updown(sht_win,   2); /* ウィンドウの下敷きの高さを指定 */
+    sheet_updown(sht_win,   1); /* ウィンドウの下敷きの高さを指定 */
+    sheet_updown(sht_mouse, 2); /* マウスの下敷きの高さを指定 */
     sprintf(s, "(%3d, %3d)", mx, my);
     putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
     sprintf(s, "memory %dMB   free : %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024); 
@@ -64,9 +62,15 @@ void HariMain(void)
     /* 理想的な割り込み処理 */
 
     for (;;) {
+        count++;
+        sprintf(s, "%010d", count);
+        boxfill8(buf_win, 160, COL8_C6C6C6, 40, 28, 119, 43);
+        putfonts8_asc(buf_win, 160, 40, 28, COL8_000000, s);
+        sheet_refresh(sht_win, 40, 28, 120, 44);
+
         io_cli();                                                     /* 外部割り込み禁止（割り込み処理中の割り込み対策） */
         if (fifo8_status(&keyfifo) + fifo8_status(&mousefifo) == 0) { /* どちらからもデータが来てないことの確認 */
-            io_stihlt();                                              /* 外部割り込みの許可と、CPU停止命令(割り込みの終了) */
+            io_sti();  /* 外部割り込みの許可と、CPU停止命令一時削除 */
         } else {
             if (fifo8_status(&keyfifo) != 0) {  /* もしキーボードの方のデータが来ていたら */
                 i = fifo8_get(&keyfifo); /* キーコードのアドレスを変数iに格納 */
