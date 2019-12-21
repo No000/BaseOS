@@ -136,7 +136,7 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title)
         "OQQQQQQQQQQQQQ$@",
         "O$$$$$$$$$$$$$$@",
         "@@@@@@@@@@@@@@@@"
-    };
+    };  /* ×ボタン */
     int x, y;
     char c;
     boxfill8(buf, xsize, COL8_C6C6C6, 0,         0,         xsize - 1, 0        );
@@ -150,6 +150,7 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title)
     boxfill8(buf, xsize, COL8_848484, 1,         ysize - 2, xsize - 2, ysize - 2);
     boxfill8(buf, xsize, COL8_000000, 0,         ysize - 1, xsize - 1, ysize - 1);
     putfonts8_asc(buf, xsize, 24, 4, COL8_FFFFFF, title);
+    /* ×ボタンの解読 */
     for (y = 0; y < 14; y++) {
         for (x = 0; x < 16; x++) {
             c = closebtn[y][x];
