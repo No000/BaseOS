@@ -54,7 +54,7 @@ void sheet_setbuf(struct SHEET *sht, unsigned char *buf, int xsize, int ysize, i
 }
 
 /* 一部対応させる描きなおし関数（ローカル） */
-void sheet_refreshsub(struct SHTCTL *ctl, int vx0, int vy0, int vx1, int vy1)
+void sheet_refreshsub(struct SHTCTL *ctl, int vx0, int vy0, int vx1, int vy1, int h0)
 {
   int h, bx, by, vx, vy, bx0, by0, bx1, by1;  /* h:, bx:, by:, vx:, vy: */
   unsigned char *buf, c, *vram = ctl->vram; /* buf:, c:, vram: */
@@ -64,7 +64,7 @@ void sheet_refreshsub(struct SHTCTL *ctl, int vx0, int vy0, int vx1, int vy1)
   if (vy0 < 0) { vy0 = 0; } /* 画面外に出ている間は、下敷きの対応範囲xを修正 */
   if (vx1 > ctl->xsize) { vx1 = ctl->xsize; } /* 右の端っこの補正 */
   if (vy1 > ctl->ysize) { vy1 = ctl->ysize; } /* 下の端っこの補正 */
-  for (h = 0; h <= ctl->top; h++) { /* 下から一番上の下敷きまでを */
+  for (h = h0; h <= ctl->top; h++) { /* h0から最上位までの下敷きを */
     sht = ctl->sheets[h];
     buf = sht->buf;
     /* vx0~vy1を使って、bx0~by1を逆算する */
@@ -114,6 +114,7 @@ void sheet_updown(struct SHEET *sht, int height)
         ctl->sheets[h]->height = h;     /* 1個下という高さの情報を現在の高さに変更 */
       }
       ctl->sheets[height] = sht;    /* 一枚分のでーたを割り振り */
+      sheet_refreshsub(ctl, sht->vx0, sht->vy0, sht->vx0 + sht->bxsize, sht->vy0 + sht->bysize, height + 1);
     } else {  /* 非表示化 */
       if (ctl->top > old) {
         /* 上になっているものをおろす */
@@ -124,7 +125,7 @@ void sheet_updown(struct SHEET *sht, int height)
       }
       ctl->top--; /* 表示中の下敷きが一つ減るので一番上の高さが減る */
     }
-    sheet_refreshsub(ctl, sht->vx0, sht->vy0, sht->vx0 + sht->bxsize, sht->vy0 + sht->bysize); /* 新しい下敷きの情報に沿って画面を描き直す */
+    sheet_refreshsub(ctl, sht->vx0, sht->vy0, sht->vx0 + sht->bxsize, sht->vy0 + sht->bysize, 0); /* 新しい下敷きの情報に沿って画面を描き直す */
   } else if (old < height) {    /* もし高さが、設定前より高くなるのなら */
     if (old >= 0) {   /* 設定前の高さが0以上（表示）だったら */
       /* 間のものを押し上げる */
@@ -142,7 +143,7 @@ void sheet_updown(struct SHEET *sht, int height)
       ctl->sheets[height] = sht;  /* 用意できた高さへデータを挿入 */
       ctl->top++; /* 表示中の下敷きが1つ増えるので、一番上の高さが増える */
     }
-    sheet_refreshsub(ctl, sht->vx0, sht->vy0, sht->vx0 + sht->bxsize, sht->vy0 + sht->bysize); /* 新しい下敷きの情報に沿って画面を描きなおす */
+    sheet_refreshsub(ctl, sht->vx0, sht->vy0, sht->vx0 + sht->bxsize, sht->vy0 + sht->bysize, height); /* 新しい下敷きの情報に沿って画面を描きなおす */
   }
   return;
 }
@@ -150,7 +151,7 @@ void sheet_updown(struct SHEET *sht, int height)
 void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bx1, int by1)
 {
   if (sht->height >= 0) {   /* もしも表示中なら、新しい下敷きの情報に沿って画面を描きなおす */
-    sheet_refreshsub(sht->ctl, sht->vx0 + bx0, sht->vy0 + by0, sht->vx0 + bx1, sht->vy0 + by1); 
+    sheet_refreshsub(sht->ctl, sht->vx0 + bx0, sht->vy0 + by0, sht->vx0 + bx1, sht->vy0 + by1, sht->height); 
     /* 画面全体を対象としてsheet_refreshsubを実行 */
   }
   return;
@@ -162,8 +163,8 @@ void sheet_slide(struct SHEET *sht, int vx0, int vy0)
   sht->vx0 = vx0; /* 移動したx座標の情報を格納 */
   sht->vy0 = vy0; /* 移動したy座標の情報を格納 */
   if (sht->height >= 0) { /* もしも表示中なら(下に描画があれば) */
-    sheet_refreshsub(sht->ctl, old_vx0, old_vy0, old_vx0 + sht->bxsize, old_vy0 + sht->bysize); /* 移動前の描きなおし */
-    sheet_refreshsub(sht->ctl, vx0, vy0, vx0 + sht->bxsize, vy0 + sht->bysize); /* 移動後の描きなおし */
+    sheet_refreshsub(sht->ctl, old_vx0, old_vy0, old_vx0 + sht->bxsize, old_vy0 + sht->bysize, 0); /* 移動前の描きなおし */
+    sheet_refreshsub(sht->ctl, vx0, vy0, vx0 + sht->bxsize, vy0 + sht->bysize, sht->height); /* 移動後の描きなおし */
   }
   return;
 }
