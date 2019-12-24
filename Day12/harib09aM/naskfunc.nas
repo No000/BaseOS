@@ -40,7 +40,7 @@ _io_stihlt: ; void io_stihlt(void);
     RET
 
 _io_in8:    ; int io_in8(int port);
-    MOV     EDX,[ESP+4]     ; port
+    MOV     EDX,[ESP+4]     ; port：ESP+4なのは、CALLを飛び越えるため
     MOV     EAX,0
     IN      AL,DX
     RET
