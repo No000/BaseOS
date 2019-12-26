@@ -22,7 +22,8 @@ void HariMain(void)
     io_sti();   /* IDT/PICの初期化が終わったのでCPUの割り込み禁止を解除 */
     fifo8_init(&keyfifo, 32, keybuf);           /* キーボードバッファの初期化 */
     fifo8_init(&mousefifo, 128, mousebuf);      /* マウスバッファの初期化 */
-    io_out8(PIC0_IMR, 0xf9); /* PIC1とキーボードを許可（1111_10001） */
+    init_pit(); /* PITの初期化 */
+    io_out8(PIC0_IMR, 0xf8); /* PITとPIC1とキーボードを許可（1111_1000） */
     io_out8(PIC1_IMR, 0xef); /* マウスを許可（1110_1111） */
 
     init_keyboard();                            /* キーボードの初期化 */
