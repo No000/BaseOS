@@ -180,8 +180,12 @@ void sheet_free(struct SHEET *sht);
 
 /* timer.c */
 struct TIMERCTL {
-    unsigned int count;
+    unsigned int count;    /* カウンタ */
+    unsigned int timeout;  /* 残り時間 */
+    struct FIFO8 *fifo;    /* バッファ */
+    unsigned char data;    /* 送信用データ */
 };
 extern struct TIMERCTL timerctl;
 void init_pit(void);
 void inthandler20(int *esp);
+void settimer(unsigned int timeout, struct FIFO8 *fifo, unsigned char data);
