@@ -186,7 +186,7 @@ struct TIMER {
     unsigned char data;
 };
 struct TIMERCTL {
-    unsigned int count;    /* カウンタ */
+    unsigned int count, next;    /* カウンタ */
     struct TIMER timer[MAX_TIMER];
 };
 extern struct TIMERCTL timerctl;
