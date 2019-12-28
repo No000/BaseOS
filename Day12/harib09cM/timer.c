@@ -23,17 +23,25 @@ void inthandler20(int *esp)
 {
   io_out8(PIC0_OCW2, 0x60); /* IRQ-00受付完了をPICに通知 */
   timerctl.count++;   /* 指定に従いカウントする */
+  if (timerctl.timeout > 0) {
+    timerctl.timeout--;
+    if (timerctl.timeout == 0) {
+      fifo8_put(timerctl.fifo, timerctl.data);  
+      /* カウントが0になったらFIFOバッファに送る */
+    }
+  }
   return;
 }
 
 void settimer(unsigned int timeout, struct FIFO8 *fifo, unsigned char data);
 {
   int eflags;
-  eflags = io_load_eflags();
-  io_cli;
+  eflags = io_load_eflags();  /* フラグレジスタの退避 */
+  io_cli();     /* 割り込み禁止 */
   timerctl.timeout = timeout;
   timerctl.fifo = fifo;
   timerctl.data = data;
-  io_store_eflags(eflags);
+  io_store_eflags(eflags);    
+  /* フラグレジスタを戻す(この際IFフラグも戻る) */
   return;
 }
