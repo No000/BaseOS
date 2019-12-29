@@ -199,7 +199,8 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title)
     return;
 }
 
-void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l)   /* x y: 表示位置の座標, c: 文字色, b: 背景色, s: 文字列, l: 文字長*/
+void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l)   
+/* x y: 表示位置の座標, c: 文字色, b: 背景色, s: 文字列, l: 文字長*/
 {
     boxfill8(sht->buf, sht->bxsize, b, x, y, x + l * 8 - 1, y + 15);
     putfonts8_asc(sht->buf, sht->bxsize, x, y, c, s);
