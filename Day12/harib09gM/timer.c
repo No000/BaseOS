@@ -22,7 +22,7 @@ void init_pit(void)
   timerctl.next = 0xffffffff; /* 最初の作動中タイマがないので */
   timerctl.using = 0;
   for (i = 0; i < MAX_TIMER; i++) {
-    timerctl.timer[i].flags = 0;  /* 未使用 */
+    timerctl.timers0[i].flags = 0;  /* 未使用 */
   }
   return;
 }
@@ -55,13 +55,26 @@ void timer_init(struct TIMER *timer, struct FIFO8 *fifo, unsigned char data)
 /* timersへの登録を追加 */
 void timer_settime(struct TIMER *timer, unsigned int timeout)
 {
+  int e, i, j;
   timer->timeout = timeout + timerctl.count;
   timer->flags = TIMER_FLAGS_USING;
-
-  if (timerctl.next > timer->timeout) {
-    timerctl.next = timer->timeout;    
+  e = io_load_eflags();
+  io_cli();
+  /* どこに入れればいいかを探す */
+  for (i = 0; i < timerctl.using; i++) {
+    if (timerctl.timers[i]->timeout >= timer->timeout) {
+      break;
+    }
   }
-  /* 割り込み予定時刻を計算している */
+  /* うしろにずらす */
+  for (j = timerctl.using; j > i; j--) {
+    timerctl.timers[j] = timerctl.timers[j - 1];
+  }
+  timerctl.using++;
+  /* 空いた隙間に入れる */
+  timerctl.timers[i] = timer;
+  timerctl.next = timerctl.timers[0]->timeout;
+  io_store_eflags(e);
   return;
 }
 
@@ -81,7 +94,7 @@ void inthandler20(int *esp)
     }
     /* タイムアウト */
     timerctl.timers[i]->flags = TIMER_FLAGS_ALLOC;
-    fifo8_put(timerctl/timers[i]->fifo, timerctl.timers[i]->data);
+    fifo8_put(timerctl.timers[i]->fifo, timerctl.timers[i]->data);
   }
   /* ちょうど一個のタイマがタイムアウトした。残りをずらす。 */
   timerctl.using -= i;
