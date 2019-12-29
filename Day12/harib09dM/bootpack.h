@@ -181,13 +181,13 @@ void sheet_free(struct SHEET *sht);
 /* timer.c */
 #define MAX_TIMER   500
 struct TIMER {
-    unsigned int timeout, flags;
+    unsigned int timeout, flags;    /* flags：それぞれのtimerの状態を保管 */
     struct FIFO8 *fifo;
     unsigned char data;
 };
 struct TIMERCTL {
     unsigned int count;    /* カウンタ */
-    struct TIMER timer[MAX_TIMER];
+    struct TIMER timer[MAX_TIMER];  /* timeoutを500個管理可能 */
 };
 extern struct TIMERCTL timerctl;
 void init_pit(void);

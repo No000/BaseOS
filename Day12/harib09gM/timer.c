@@ -20,6 +20,7 @@ void init_pit(void)
   io_out8(PIT_CNT0, 0x2e);  /* 割り込み周期の上位8bit */
   timerctl.count = 0;
   timerctl.next = 0xffffffff; /* 最初の作動中タイマがないので */
+  timerctl.using = 0;
   for (i = 0; i < MAX_TIMER; i++) {
     timerctl.timer[i].flags = 0;  /* 未使用 */
   }
@@ -30,9 +31,9 @@ struct TIMER *timer_alloc(void)
 {
   int i;
   for (i = 0; i < MAX_TIMER; i++) {
-    if ( timerctl.timer[i].flags == 0) {
-      timerctl.timer[i].flags = TIMER_FLAGS_ALLOC;
-      return &timerctl.timer[i];
+    if ( timerctl.timers0[i].flags == 0) {
+      timerctl.timers0[i].flags = TIMER_FLAGS_ALLOC;
+      return &timerctl.timers0[i];
     }
   }
   return 0; /* 見つからなかった */
@@ -51,10 +52,12 @@ void timer_init(struct TIMER *timer, struct FIFO8 *fifo, unsigned char data)
   return;
 }
 
+/* timersへの登録を追加 */
 void timer_settime(struct TIMER *timer, unsigned int timeout)
 {
   timer->timeout = timeout + timerctl.count;
   timer->flags = TIMER_FLAGS_USING;
+
   if (timerctl.next > timer->timeout) {
     timerctl.next = timer->timeout;    
   }
@@ -65,26 +68,30 @@ void timer_settime(struct TIMER *timer, unsigned int timeout)
 /* IDT20の処理設定 */
 void inthandler20(int *esp)
 {
-  int i;
+  int i, j; /*  */
   io_out8(PIC0_OCW2, 0x60); /* IRQ-00受付完了をPICに通知 */
   timerctl.count++;   /* 指定に従いカウントする */
   if (timerctl.next > timerctl.count) {
     return; /* まだ次の時刻になっていないので、もうおしまい */
   }
-  timerctl.next = 0xffffffff;
-  for (i = 0; i < MAX_TIMER; i++) {
-    if (timerctl.timer[i].flags == TIMER_FLAGS_USING) {
-      if (timerctl.timer[i].timeout <= timerctl.count) {    
-      /* これで減算しつつタイマーにしていたのを、一定の時間に来たら通知するという仕組みにすることができた */
-        timerctl.timer[i].flags = TIMER_FLAGS_ALLOC;
-        fifo8_put(timerctl.timer[i].fifo, timerctl.timer[i].data);
-      } else {
-        /* まだタイムアウトではない */
-        if (timerctl.next > timerctl.timer[i].timeout) {
-          timerctl.next = timerctl.timer[i].timeout;
-        }
-      }
+  for (i = 0;i < timerctl.using; i++) {
+    /* timers のタイマは全て動作中のものなので、flagsを確認しない */
+    if (timerctl.timers[i]->timeout > timerctl.count) {
+      break;
     }
+    /* タイムアウト */
+    timerctl.timers[i]->flags = TIMER_FLAGS_ALLOC;
+    fifo8_put(timerctl/timers[i]->fifo, timerctl.timers[i]->data);
+  }
+  /* ちょうど一個のタイマがタイムアウトした。残りをずらす。 */
+  timerctl.using -= i;
+  for (j = 0; j < timerctl.using; j++) {
+    timerctl.timers[j] = timerctl.timers[i + j];
+  }
+  if (timerctl.using > 0) {
+    timerctl.next = timerctl.timers[0]->timeout;
+  } else {
+    timerctl.next = 0xffffffff;
   }
   return;
 }
