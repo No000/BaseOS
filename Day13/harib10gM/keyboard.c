@@ -2,8 +2,8 @@
 
 #include "bootpack.h"
 
-struct FIFO8 keyfifo;   /* 構造体をkeyinfoと名付けている */
-int keydate0;
+struct FIFO32 *keyfifo;   /* 構造体をkeyinfoと名付けている */
+int keydata0;
 
 void inthandler21(int *esp)
 /* PS/2キーボードからの割り込み */
@@ -11,7 +11,7 @@ void inthandler21(int *esp)
   int data;
   io_out8(PIC0_OCW2, 0x61); /*  */
   data = io_in8(PORT_KEYDAT);
-  fifo8_put(&keyfifo, data);
+  fifo32_put(keyfifo, data + keydata0);
   return;
 }
 
@@ -35,7 +35,7 @@ void init_keyboard(struct FIFO32 *fifo, int data0)
 {
     /* 書き込み先のFIFOバッファを記憶 */
     keyfifo = fifo;
-    keydate0 = data0;
+    keydata0 = data0;
     /* キーボードコントローラーの初期化 */
     wait_KBC_sendready();                       /* 送信可能かの確認 */
     io_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);    /* モード設定コマンド */
