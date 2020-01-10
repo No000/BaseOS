@@ -185,7 +185,7 @@ struct TIMER {
     int data;
 };
 struct TIMERCTL {
-    unsigned int count, next, using;    
+    unsigned int count, next;    
     /* count:カウンタ,next:次に注目するタイマー,using:使用中タイマの個数 */
     struct TIMER *t0;
     /* タイマーを順番に管理 */
