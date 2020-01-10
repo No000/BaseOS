@@ -179,14 +179,15 @@ void sheet_free(struct SHEET *sht);
 /* timer.c */
 #define MAX_TIMER   500
 struct TIMER {
+    struct TIMER *next;
     unsigned int timeout, flags;
     struct FIFO32 *fifo;
     int data;
 };
 struct TIMERCTL {
-    unsigned int count, next, using;    
+    unsigned int count, next;    
     /* count:カウンタ,next:次に注目するタイマー,using:使用中タイマの個数 */
-    struct TIMER *timers[MAX_TIMER];
+    struct TIMER *t0;
     /* タイマーを順番に管理 */
     struct TIMER timers0[MAX_TIMER];
 };
