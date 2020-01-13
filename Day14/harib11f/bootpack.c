@@ -13,7 +13,7 @@ void HariMain(void)
     char s[40];
     int fifobuf[128];
     struct TIMER *timer, *timer2, *timer3;
-    int mx, my, i, count = 0;
+    int mx, my, i;
     unsigned int memtotal;
     struct MOUSE_DEC mdec; /* マウスのデータを構造体で管理（タグ：mdec） */
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
@@ -58,7 +58,7 @@ void HariMain(void)
     sheet_setbuf(sht_win, buf_win, 160, 52, -1); /* 透明色なし */
     init_screen8(buf_back, binfo->scrnx, binfo->scrny); /* 背景を描画 */
     init_mouse_cursor8(buf_mouse, 99);  /* マウスを描画 */
-    make_window8(buf_win, 160, 52, "counter"); /* カウンターウィンドウ */
+    make_window8(buf_win, 160, 52, "window"); /* カウンターウィンドウ */
     sheet_slide(sht_back, 0, 0);    /* 背景の位置指定 */
     mx = (binfo->scrnx - 16) / 2; /* 画面中央になるx座標 */
     my = (binfo->scrny - 28 -16) / 2; /* 画面中央になるy座標 */
@@ -75,17 +75,18 @@ void HariMain(void)
     /* 理想的な割り込み処理 */
 
     for (;;) {
-        count++;
-
         io_cli();                                                     /* 外部割り込み禁止（割り込み処理中の割り込み対策） */
         if (fifo32_status(&fifo) == 0) { /* どちらからもデータが来てないことの確認 */
-            io_sti();  /* 外部割り込みの許可と、CPU停止命令一時削除 */
+            io_stihlt();  /* 外部割り込みの許可と、CPU停止命令一時削除 */
         } else {
             i = fifo32_get(&fifo);
             io_sti();
             if (256 <= i && i <= 511) {  /* もしキーボードの方のデータが来ていたら */
                 sprintf(s, "%02X", i - 256); /* メモリのデータの参照 */
                 putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, s, 2);
+                if (i == 0x1e + 256) {
+                    putfonts8_asc_sht(sht_win, 40, 28, COL8_000000, COL8_C6C6C6, "A", 1);
+                }
             } else if (512 <= i && i <= 767) {         /* もしもマウスのデータが来ていたら */
                       /* IFに1をセット（外部割り込みの許可） */
                 if (mouse_decode(&mdec, i - 512) != 0) {
@@ -120,19 +121,16 @@ void HariMain(void)
                     putfonts8_asc_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, s, 10);
                     sheet_slide(sht_mouse, mx, my);
                 }
-            } else if (i == 10) {
+            } else if (i == 10) {   /* 10秒タイマ */
                 putfonts8_asc_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_008484, "10[sec]", 7);
-                sprintf(s, "%010d", count);
-                putfonts8_asc_sht(sht_win, 40, 28, COL8_000000, COL8_C6C6C6, s, 10);
-            } else if (i == 3) {
+            } else if (i == 3) {    /* 3秒タイマ */
                 putfonts8_asc_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_008484, "3[sec]", 6);
-                count = 0; /* 測定開始 */
-            } else if (i == 1) {
+            } else if (i == 1) {    /* カーソル用タイマ */
                 timer_init(timer3, &fifo, 0); /* 次は0を */
                 boxfill8(buf_back, binfo->scrnx, COL8_FFFFFF, 8, 96, 15, 111);
                 timer_settime(timer3, 50);
                 sheet_refresh(sht_back, 8, 96, 16, 112);
-            } else if (i == 0) {
+            } else if (i == 0) {    /* カーソル用タイマ */
                 timer_init(timer3, &fifo, 1); /* 次は1を */
                 boxfill8(buf_back, binfo->scrnx, COL8_008484, 8, 96, 15, 111);
                 timer_settime(timer3, 50);
