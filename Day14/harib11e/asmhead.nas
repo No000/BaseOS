@@ -1,6 +1,16 @@
 ; hariboe-os boot asm
 ; TAB=4
 
+[INSTRSET "i486p"]              ; 486命令まで使いたいという記述
+
+VBEMODE EQU     0x105           ; 1024 × 768 × 8bitカラー
+; （画面モード一覧）
+; 0x100 :  640 ×  400 x 8bitカラー
+; 0x101 :  640 x  480 x 8bitカラー
+; 0x103 :  800 x  600 x 8bitカラー
+; 0x105 : 1024 x  768 x 8bitカラー
+; 0x107 : 1280 x 1024 x 8bitカラー
+
 BOTPAK  EQU     0x00280000      ; bootpackのロード先
 DSKCAC  EQU     0x00100000      ; ディスクキャッシュの場所
 DSKCAC0 EQU     0x00008000      ; ディスクキャッシュの場所（リアルモード）
@@ -15,18 +25,66 @@ VRAM    EQU     0x0ff8      ; グラフィックバッファの開始番地
 
     ORG     0xc200      ; このプログラムがメモリ上のどこに読み込まれるか
 
-; 画面モードを設定
+; VBEの存在確認
 
-    MOV     BX,0x4101     ; VBEの640×480×8bitカラー
+    MOV     AX,0x9000
+    MOV     ES,AX
+    MOV     DI,0        ; ES:DIの領域にVBEの情報が格納
+    MOV     AX,0x4f00
+    INT     0x10        ;   VBEがあった場合AX=0x004fに変化
+    CMP     AX,0x004f
+    JNE     scrn320
+
+; VBEのバージョンチェック(2.0)
+
+    MOV     AX,[ES:DI+4]
+    CMP     AX,0x0200
+    JB      scrn320     ; if (AX < 0x0200) goto scrn320
+
+; 画面モード情報を得る
+
+    MOV     CX,VBEMODE
+    MOV     AX,0x4f01
+    INT     0x10
+    CMP     AX,0x004f   ; 0x004fじゃなければ、指定した画面モードが使えなかった
+    JNE     scrn320
+
+; 画面モード情報の確認（[ES:DI]でのオフセットでの確認）
+
+    CMP     BYTE [ES:DI+0x19],8
+    JNE     scrn320
+    CMP     BYTE [ES:DI+0x1b],4
+    JNE     scrn320
+    MOV     AX,[ES:DI+0x00]
+    AND     AX,0x0080
+    JZ      scrn320         ; モード属性のbit7が0だったのであきらめる
+
+; 画面モードの切り替え(ここまで来て切り替えの準備が終了)
+
+    MOV     BX,VBEMODE+0x4000
     MOV     AX,0x4f02
     INT     0x10
+    MOV     BYTE [VMODE],8  ; 画面モードをメモする（C言語が参照する）
+    MOV     AX,[ES:DI+0x12]
+    MOV     [SCRNX],AX
+    MOV     AX,[ES:DI+0x14]
+    MOV     [SCRNY],AX
+    MOV     EAX,[ES:DI+0x28]
+    MOV     [VRAM],EAX
+    JMP     keystatus
+
+scrn320:
+    MOV     BX,0x13     ; VBEの320×200×8bitカラー
+    MOV     AX,0x00
+    INT     0x10
     MOV     BYTE [VMODE],8   ; 画面モードをメモする(C言語が参照する)
-    MOV     WORD [SCRNX],640
-    MOV     WORD [SCRNY],480
-    MOV     DWORD [VRAM],0xe0000000
+    MOV     WORD [SCRNX],320
+    MOV     WORD [SCRNY],200
+    MOV     DWORD [VRAM],0x000a0000
 
 ; キーボードのLED状態をBIOSに教えてもらう
 
+keystatus:
     MOV     AH,0x02
     INT     0x16        ; keyboad BIOS
     MOV     [LEDS],AL
@@ -55,8 +113,6 @@ VRAM    EQU     0x0ff8      ; グラフィックバッファの開始番地
     CALL    waitkbdout  ; KBCコマンド出力待機
 
 ; プロテクトモード移行（保護あり仮想メモリモード）
-
-[INSTRSET "i486p"]      ; 486命令まで使いたいという記述
 
     LGDT    [GDTR0]     ; 仮のGDTを読み込み
     MOV     EAX,CR0         ; コントロールレジスタ0のデータをEAXに読みだす
