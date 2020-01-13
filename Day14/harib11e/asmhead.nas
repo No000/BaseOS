@@ -74,8 +74,8 @@ VRAM    EQU     0x0ff8      ; グラフィックバッファの開始番地
     JMP     keystatus
 
 scrn320:
-    MOV     BX,0x13     ; VBEの320×200×8bitカラー
-    MOV     AX,0x00
+    MOV     AL,0x13     ; VBEの320×200×8bitカラー
+    MOV     AH,0x00
     INT     0x10
     MOV     BYTE [VMODE],8   ; 画面モードをメモする(C言語が参照する)
     MOV     WORD [SCRNX],320
