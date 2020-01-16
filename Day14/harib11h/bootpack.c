@@ -26,7 +26,7 @@ void HariMain(void)
         'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '@', '[', 0,   0,   'A', 'S',
         'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', ':', 0,   0,   ']', 'Z', 'X', 'C', 'V',
         'B', 'N', 'M', ',', '.', '/', 0,   '*', 0,   ' ', 0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   '7', '8', '9', '-', '4', '5', '6', '+', '1',
+        0,   0,   0,   0,   0,   0,   0,   '7', '8', '9', '-', '4', '5', '6', '+', '1',
         '2', '3', '0', '.' 
     };
 
@@ -70,7 +70,7 @@ void HariMain(void)
     make_window8(buf_win, 160, 52, "window"); /* カウンターウィンドウ */
     make_textbox8(sht_win, 8, 28, 144, 16, COL8_FFFFFF);    /* テキストボックス */
     cursor_x = 8;               /* カーソルの表示位置保管変数 */
-    cursor_c = COL8_FFFFFF      /* カーソルの文字の色保管変数 */
+    cursor_c = COL8_FFFFFF;      /* カーソルの文字の色保管変数 */
     sheet_slide(sht_back, 0, 0);    /* 背景の位置指定 */
     mx = (binfo->scrnx - 16) / 2; /* 画面中央になるx座標 */
     my = (binfo->scrny - 28 -16) / 2; /* 画面中央になるy座標 */
@@ -159,7 +159,7 @@ void HariMain(void)
                     timer_init(timer3, &fifo, 1); /* 次は1を */
                     cursor_c = COL8_FFFFFF;
                 }
-                timer_setime(timer3, 50);
+                timer_settime(timer3, 50);
                 boxfill8(sht_win->buf, sht_win->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
                 sheet_refresh(sht_win, cursor_x, 28, cursor_x + 8, 44);
             }
@@ -225,9 +225,17 @@ void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, i
     return;
 }
 
-void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, sy, int c)
+void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c)
 {
     int x1 = x0 + sx, y1 = y0 + sy;
     boxfill8(sht->buf, sht->bxsize, COL8_848484, x0 - 2, y0 - 3, x1 + 1, y0 - 3);
     boxfill8(sht->buf, sht->bxsize, COL8_848484, x0 - 3, y0 - 3, x0 - 3, y1 + 1);
+    boxfill8(sht->buf, sht->bxsize, COL8_FFFFFF, x0 - 3, y1 + 2, x1 + 1, y1 + 2);
+    boxfill8(sht->buf, sht->bxsize, COL8_FFFFFF, x1 + 2, y0 - 3, x1 + 2, y1 + 2);
+    boxfill8(sht->buf, sht->bxsize, COL8_000000, x0 - 1, y0 - 2, x1 + 0, y0 - 2);
+    boxfill8(sht->buf, sht->bxsize, COL8_000000, x0 - 2, y0 - 2, x0 - 2, y1 + 0);
+    boxfill8(sht->buf, sht->bxsize, COL8_C6C6C6, x0 - 2, y1 + 1, x1 + 0, y1 + 1);
+    boxfill8(sht->buf, sht->bxsize, COL8_C6C6C6, x1 + 1, y0 - 2, x1 + 1, y1 + 1);
+    boxfill8(sht->buf, sht->bxsize, c,           x0 - 1, y0 - 1, x1 + 0, y1 + 0);
+    return;
 }
