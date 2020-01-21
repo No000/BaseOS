@@ -7,6 +7,13 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title);
 void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l);  /* 文字出力をまとめる */
 void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
 
+struct TSS32 {  /* 32bit ver task status segment */
+    int backlink esp0, ss0, esp1, ss1, esp2, ss2, cr3;      /* タスク用変数 */
+    int eip, eflags, eax, ecx, edx, esp, ebp, esi, edi:     /* 32bitレジスタ */
+    int es, cs, ss, ds, fs, gs;     /* 16bitレジスタ */
+    int ldtr, iomap;        /* LDTR=0, iomap=0x4000_0000 */
+};
+
 void HariMain(void)
 {
     struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
