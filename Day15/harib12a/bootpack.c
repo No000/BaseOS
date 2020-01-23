@@ -14,6 +14,8 @@ struct TSS32 {  /* 32bit ver task status segment */
     int ldtr, iomap;        /* LDTR=0, iomap=0x4000_0000 */
 };
 
+void task_b_main(void);
+
 void HariMain(void)
 {
     struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
@@ -36,6 +38,8 @@ void HariMain(void)
         0,   0,   0,   0,   0,   0,   0,   '7', '8', '9', '-', '4', '5', '6', '+', '1',
         '2', '3', '0', '.' 
     };
+    struct TSS32 tss_a, tss_b;
+    struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
 
     init_gdtidt(); /* GDT、IDTの初期化 */
     init_pic(); /* PICの初期か */
@@ -92,6 +96,31 @@ void HariMain(void)
     putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, s, 40);
     /* キーボードとマウスの許可は上に移動 */
     /* 理想的な割り込み処理 */
+    /* タスクスイッチ */
+    tss_a.ldtr = 0;             /* 規定 */
+    tss_a.iomap = 0x40000000;   /* 規定 */
+    tss_b.ldtr = 0;             /* 規定 */
+    tss_b.iomap = 0x40000000;   /* 規定 */
+    set_segmdesc(gdt + 3, 103, (int) &tss_a, AR_TSS32); /* タスクAをGDTに登録 */
+    set_gatedesc(gdt + 4, 103, (int) &tss_b, AR_TSS32); /* タスクBをGDTに登録 */
+    load_tr(3 * 8);     /* TRレジスタへの代入 */
+    task_b_esp = memman_alloc_4k(memman, 64 + 1024) + 64 * 1024;
+    tss_b.eip = (int) &task_b_main;
+    tss_b.eflags = 0x00000202; /* IF = 1 */
+    tss_b.eax = 0;
+    tss_b.ecx = 0;
+    tss_b.edx = 0;
+    tss_b.ebx = 0;
+    tss_b.esp = task_b_esp;
+    tss_b.ebp = 0;
+    tss_b.esi = 0;
+    tss_b.edi = 0;
+    tss_b.es = 1 * 8;
+    tss_b.cs = 2 * 8;
+    tss_b.ss = 1 * 8;
+    tss_b.ds = 1 * 8;
+    tss_b.fs = 1 * 8;
+    tss_b.gs = 1 * 8;
 
     for (;;) {
         io_cli();                                                     /* 外部割り込み禁止（割り込み処理中の割り込み対策） */
