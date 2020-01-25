@@ -8,8 +8,8 @@ void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, i
 void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
 
 struct TSS32 {  /* 32bit ver task status segment */
-    int backlink esp0, ss0, esp1, ss1, esp2, ss2, cr3;      /* タスク用変数 */
-    int eip, eflags, eax, ecx, edx, esp, ebp, esi, edi:     /* 32bitレジスタ */
+    int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;      /* タスク用変数 */
+    int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;     /* 32bitレジスタ */
     int es, cs, ss, ds, fs, gs;     /* 16bitレジスタ */
     int ldtr, iomap;        /* LDTR=0, iomap=0x4000_0000 */
 };
@@ -23,7 +23,7 @@ void HariMain(void)
     char s[40];
     int fifobuf[128];
     struct TIMER *timer, *timer2, *timer3;
-    int mx, my, i, cursor_x, cursor_c;
+    int mx, my, i, cursor_x, cursor_c, task_b_esp;
     unsigned int memtotal;
     struct MOUSE_DEC mdec; /* マウスのデータを構造体で管理（タグ：mdec） */
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
@@ -102,16 +102,16 @@ void HariMain(void)
     tss_b.ldtr = 0;             /* 規定 */
     tss_b.iomap = 0x40000000;   /* 規定 */
     set_segmdesc(gdt + 3, 103, (int) &tss_a, AR_TSS32); /* タスクAをGDTに登録 */
-    set_gatedesc(gdt + 4, 103, (int) &tss_b, AR_TSS32); /* タスクBをGDTに登録 */
+    set_segmdesc(gdt + 4, 103, (int) &tss_b, AR_TSS32); /* タスクBをGDTに登録 */
     load_tr(3 * 8);     /* TRレジスタへの代入 */
-    task_b_esp = memman_alloc_4k(memman, 64 + 1024) + 64 * 1024;
-    tss_b.eip = (int) &task_b_main;
+    task_b_esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024;    /* タスクBのためのスタック領域の確保（ESPはスタック領域の最終番地なことに注意） */
+    tss_b.eip = (int) &task_b_main;     /* HLTを行うだけの番地 */
     tss_b.eflags = 0x00000202; /* IF = 1(STI後のフラグ) */
     tss_b.eax = 0;
     tss_b.ecx = 0;
     tss_b.edx = 0;
     tss_b.ebx = 0;
-    tss_b.esp = task_b_esp;     /* HLTを行うだけの番地 */
+    tss_b.esp = task_b_esp;     /* スタック領域のセット */
     tss_b.ebp = 0;
     tss_b.esi = 0;
     tss_b.edi = 0;
