@@ -108,7 +108,11 @@ _load_cr0:      ; void load_cr0(void);
 _store_cr0:     ; void store_cr0(int cr0);
     MOV     EAX,[ESP+4] ; スタックポインタのデータをEAXに読み出し
     MOV     CR0,EAX     ; CR0に戻す
-    RET 
+    RET
+
+_load_tr:       ; void load_tr(int tr);
+    LTR     [ESP+4]     ; 引数trの指定
+    RET                 ; Harimainに戻る
 
 _asm_inthandler20:  ;timer
     PUSH    ES
@@ -206,3 +210,7 @@ mts_fin:
     POP     ESI
     POP     EDI
     RET
+
+_taskswitch4:   ; void taskswitch4(void)
+    JMP     4*8:0   ; farジャンプ(TSS:アドレス(通常0))
+    RET             ; タスクスイッチなので、C言語の処理に戻る必要がある

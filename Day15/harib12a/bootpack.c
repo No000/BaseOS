@@ -106,21 +106,21 @@ void HariMain(void)
     load_tr(3 * 8);     /* TRレジスタへの代入 */
     task_b_esp = memman_alloc_4k(memman, 64 + 1024) + 64 * 1024;
     tss_b.eip = (int) &task_b_main;
-    tss_b.eflags = 0x00000202; /* IF = 1 */
+    tss_b.eflags = 0x00000202; /* IF = 1(STI後のフラグ) */
     tss_b.eax = 0;
     tss_b.ecx = 0;
     tss_b.edx = 0;
     tss_b.ebx = 0;
-    tss_b.esp = task_b_esp;
+    tss_b.esp = task_b_esp;     /* HLTを行うだけの番地 */
     tss_b.ebp = 0;
     tss_b.esi = 0;
     tss_b.edi = 0;
-    tss_b.es = 1 * 8;
-    tss_b.cs = 2 * 8;
-    tss_b.ss = 1 * 8;
-    tss_b.ds = 1 * 8;
-    tss_b.fs = 1 * 8;
-    tss_b.gs = 1 * 8;
+    tss_b.es = 1 * 8;   /* GDTの1番目(以下bootpack.cのセグメントを指定) */
+    tss_b.cs = 2 * 8;   /* GDTの2番目 */
+    tss_b.ss = 1 * 8;   /* GDTの1番目 */
+    tss_b.ds = 1 * 8;   /* GDTの1番目 */
+    tss_b.fs = 1 * 8;   /* GDTの1番目 */
+    tss_b.gs = 1 * 8;   /* GDTの1番目 */
 
     for (;;) {
         io_cli();                                                     /* 外部割り込み禁止（割り込み処理中の割り込み対策） */
@@ -189,6 +189,7 @@ void HariMain(void)
                 }
             } else if (i == 10) {   /* 10秒タイマ */
                 putfonts8_asc_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_008484, "10[sec]", 7);
+                taskswitch4();      /* タスクスイッチの発生 */
             } else if (i == 3) {    /* 3秒タイマ */
                 putfonts8_asc_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_008484, "3[sec]", 6);
             } else if (i <= 1) {    /* カーソル用タイマ */
@@ -278,4 +279,9 @@ void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c)
     boxfill8(sht->buf, sht->bxsize, COL8_C6C6C6, x1 + 1, y0 - 2, x1 + 1, y1 + 1);
     boxfill8(sht->buf, sht->bxsize, c,           x0 - 1, y0 - 1, x1 + 0, y1 + 0);
     return;
+}
+
+void task_b_main(void)
+{
+    for (;;) { io_hlt(); }
 }
