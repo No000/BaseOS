@@ -16,7 +16,7 @@
     GLOBAL  _asm_inthandler20, _asm_inthandler21 
     GLOBAL  _asm_inthandler27, _asm_inthandler2c
     GLOBAL  _memtest_sub
-    GLOBAL  _taskswitch3, _taskswitch4
+    GLOBAL  _farjmp
     EXTERN  _inthandler20, _inthandler21
     EXTERN  _inthandler27, _inthandler2c
 
@@ -211,10 +211,6 @@ mts_fin:
     POP     EDI
     RET
 
-_taskswitch3:   ; void taskswitch3(void);
-    JMP     3*8:0   ; GDT3番タスクに移動
+_farjmp:        ; void farjmp(int eip, int cs);
+    JMP     FAR [ESP+4]     ; eip, cs
     RET
-
-_taskswitch4:   ; void taskswitch4(void)
-    JMP     4*8:0   ; farジャンプ(TSS（移動先のタスクBのセグメント番号*8は仕様）:(通常0))
-    RET             ; タスクスイッチなので、C言語の処理に戻る必要がある

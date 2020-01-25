@@ -22,7 +22,7 @@ void HariMain(void)
     struct FIFO32 fifo;
     char s[40];
     int fifobuf[128];
-    struct TIMER *timer, *timer2, *timer3;
+    struct TIMER *timer, *timer2, *timer3, *timer_ts;
     int mx, my, i, cursor_x, cursor_c, task_b_esp;
     unsigned int memtotal;
     struct MOUSE_DEC mdec; /* マウスのデータを構造体で管理（タグ：mdec） */
@@ -60,6 +60,9 @@ void HariMain(void)
     timer3 = timer_alloc();
     timer_init(timer3, &fifo, 1);
     timer_settime(timer3, 50);
+    timer_ts = timer_alloc();
+    timer_init(timer_ts, &fifo, 2);     /* 0.02秒 */
+    timer_settime(timer_ts, 2);         /* 0.02秒 */
 
     memtotal = memtest(0x00400000, 0xbfffffff);
     memman_init(memman);
@@ -129,10 +132,13 @@ void HariMain(void)
         } else {
             i = fifo32_get(&fifo);
             io_sti();
-            if (256 <= i && i <= 511) {  /* もしキーボードの方のデータが来ていたら */
+            if (i == 2) {
+                farjmp(0, 4 * 8);
+                timer_settime(timer_ts, 2);
+            } else if (256 <= i && i <= 511) {  /* もしキーボードの方のデータが来ていたら */
                 sprintf(s, "%02X", i - 256);
                 putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, s, 2);
-                if (i < 256 + 0x54){
+                if (i < 0x54 + 256){
                     if (keytable[i - 256] != 0 && cursor_x < 144) {   /* 通常文字 */
                         /* 一文字を表示してから、カーソルを一つ進める */
                         s[0] = keytable[i - 256];   /* i = 0x1e + 256 */
@@ -189,7 +195,6 @@ void HariMain(void)
                 }
             } else if (i == 10) {   /* 10秒タイマ */
                 putfonts8_asc_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_008484, "10[sec]", 7);
-                taskswitch4();      /* タスクスイッチの発生 */
             } else if (i == 3) {    /* 3秒タイマ */
                 putfonts8_asc_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_008484, "3[sec]", 6);
             } else if (i <= 1) {    /* カーソル用タイマ */
@@ -284,13 +289,13 @@ void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c)
 void task_b_main(void)
 {
     struct FIFO32 fifo;
-    struct TIMER *timer;
+    struct TIMER *timer_ts;
     int i, fifobuf[128];
 
     fifo32_init(&fifo, 128, fifobuf);
-    timer = timer_alloc();
-    timer_init(timer, &fifo, 1);
-    timer_settime(timer, 500);
+    timer_ts = timer_alloc();
+    timer_init(timer_ts, &fifo, 1);
+    timer_settime(timer_ts, 2);     /* 0.02秒でのタスクスイッチ */
 
     for (;;) {
         io_cli();
@@ -300,8 +305,9 @@ void task_b_main(void)
         } else {
             i = fifo32_get(&fifo);
             io_sti();
-            if (i == 1) {   /* 5秒タイムアウト */
-                taskswitch3(); /* タスクAに戻る */
+            if (i == 1) {   /* タスクスイッチ */
+                farjmp(0, 3 * 8);   /* タスクAを指定 */
+                timer_settime(timer_ts, 2);
             }
         }
     }
