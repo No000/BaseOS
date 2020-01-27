@@ -22,7 +22,7 @@ void HariMain(void)
     struct FIFO32 fifo;
     char s[40];
     int fifobuf[128];
-    struct TIMER *timer, *timer2, *timer3, *timer_ts;
+    struct TIMER *timer, *timer2, *timer3;
     int mx, my, i, cursor_x, cursor_c, task_b_esp;
     unsigned int memtotal;
     struct MOUSE_DEC mdec; /* マウスのデータを構造体で管理（タグ：mdec） */
@@ -60,9 +60,6 @@ void HariMain(void)
     timer3 = timer_alloc();
     timer_init(timer3, &fifo, 1);
     timer_settime(timer3, 50);
-    timer_ts = timer_alloc();
-    timer_init(timer_ts, &fifo, 2);     /* 0.02秒 */
-    timer_settime(timer_ts, 2);         /* 0.02秒 */
 
     memtotal = memtest(0x00400000, 0xbfffffff);
     memman_init(memman);
@@ -125,6 +122,7 @@ void HariMain(void)
     tss_b.fs = 1 * 8;   /* GDTの1番目 */
     tss_b.gs = 1 * 8;   /* GDTの1番目 */
     *((int *) (task_b_esp + 4)) = (int) sht_back;     /* スタックにバックアップ */
+    mt_init();  /* タスクスイッチの自動化 */
 
     for (;;) {
         io_cli();                                                     /* 外部割り込み禁止（割り込み処理中の割り込み対策） */
@@ -133,10 +131,7 @@ void HariMain(void)
         } else {
             i = fifo32_get(&fifo);
             io_sti();
-            if (i == 2) {
-                farjmp(0, 4 * 8);
-                timer_settime(timer_ts, 2);
-            } else if (256 <= i && i <= 511) {  /* もしキーボードの方のデータが来ていたら */
+            if (256 <= i && i <= 511) {  /* もしキーボードの方のデータが来ていたら */
                 sprintf(s, "%02X", i - 256);
                 putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, s, 2);
                 if (i < 0x54 + 256){
@@ -290,14 +285,11 @@ void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c)
 void task_b_main(struct SHEET *sht_back)
 {
     struct FIFO32 fifo;
-    struct TIMER *timer_ts, *timer_put, *timer_1s;
+    struct TIMER *timer_put, *timer_1s;
     int i, fifobuf[128], count = 0, count0 = 0;
     char s[12];
 
     fifo32_init(&fifo, 128, fifobuf);
-    timer_ts = timer_alloc();
-    timer_init(timer_ts, &fifo, 2);
-    timer_settime(timer_ts, 2);     /* 0.02秒でのタスクスイッチ */
     timer_put = timer_alloc();
     timer_init(timer_put, &fifo, 1);
     timer_settime(timer_put, 1);
@@ -317,9 +309,6 @@ void task_b_main(struct SHEET *sht_back)
                 sprintf(s, "%11d", count);
                 putfonts8_asc_sht(sht_back, 0, 144, COL8_FFFFFF, COL8_008484, s, 11);
                 timer_settime(timer_put, 1);
-            } else if (i == 2) {
-                farjmp(0, 3 * 8);
-                timer_settime(timer_ts, 2);
             } else if (i == 100) {
                 sprintf(s,"%11d", count - count0);
                 putfonts8_asc_sht(sht_back, 0, 128, COL8_FFFFFF, COL8_008484, s, 11);
