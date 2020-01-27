@@ -322,7 +322,7 @@ void task_b_main(struct SHEET *sht_back)
                 timer_settime(timer_ts, 2);
             } else if (i == 100) {
                 sprintf(s,"%11d", count - count0);
-                putfonts8_asc_sht(sht_bacj, 0, 128, COL8_FFFFFF, COL8_008484, s, 11);
+                putfonts8_asc_sht(sht_back, 0, 128, COL8_FFFFFF, COL8_008484, s, 11);
                 count0 = count;
                 timer_settime(timer_1s, 100);
             }
