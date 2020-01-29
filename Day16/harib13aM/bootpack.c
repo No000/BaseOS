@@ -6,14 +6,6 @@
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title);
 void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l);  /* 文字出力をまとめる */
 void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
-
-struct TSS32 {  /* 32bit ver task status segment */
-    int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;      /* タスク用変数 */
-    int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;     /* 32bitレジスタ */
-    int es, cs, ss, ds, fs, gs;     /* 16bitレジスタ */
-    int ldtr, iomap;        /* LDTR=0, iomap=0x4000_0000 */
-};
-
 void task_b_main(struct SHEET *sht_back);
 
 void HariMain(void)
@@ -23,7 +15,7 @@ void HariMain(void)
     char s[40];
     int fifobuf[128];
     struct TIMER *timer, *timer2, *timer3;
-    int mx, my, i, cursor_x, cursor_c, task_b_esp;
+    int mx, my, i, cursor_x, cursor_c;
     unsigned int memtotal;
     struct MOUSE_DEC mdec; /* マウスのデータを構造体で管理（タグ：mdec） */
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
@@ -38,8 +30,7 @@ void HariMain(void)
         0,   0,   0,   0,   0,   0,   0,   '7', '8', '9', '-', '4', '5', '6', '+', '1',
         '2', '3', '0', '.' 
     };
-    struct TSS32 tss_a, tss_b;
-    struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
+    struct TASK *task_b;
 
     init_gdtidt(); /* GDT、IDTの初期化 */
     init_pic(); /* PICの初期か */
@@ -97,32 +88,18 @@ void HariMain(void)
     /* キーボードとマウスの許可は上に移動 */
     /* 理想的な割り込み処理 */
     /* タスクスイッチ */
-    tss_a.ldtr = 0;             /* 規定 */
-    tss_a.iomap = 0x40000000;   /* 規定 */
-    tss_b.ldtr = 0;             /* 規定 */
-    tss_b.iomap = 0x40000000;   /* 規定 */
-    set_segmdesc(gdt + 3, 103, (int) &tss_a, AR_TSS32); /* タスクAをGDTに登録 */
-    set_segmdesc(gdt + 4, 103, (int) &tss_b, AR_TSS32); /* タスクBをGDTに登録 */
-    load_tr(3 * 8);     /* TRレジスタへの代入 */
-    task_b_esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024;    /* タスクBのためのスタック領域の確保（ESPはスタック領域の最終番地なことに注意） */
-    tss_b.eip = (int) &task_b_main;     /* HLTを行うだけの番地 */
-    tss_b.eflags = 0x00000202; /* IF = 1(STI後のフラグ) */
-    tss_b.eax = 0;
-    tss_b.ecx = 0;
-    tss_b.edx = 0;
-    tss_b.ebx = 0;
-    tss_b.esp = task_b_esp;     /* スタック領域のセット */
-    tss_b.ebp = 0;
-    tss_b.esi = 0;
-    tss_b.edi = 0;
-    tss_b.es = 1 * 8;   /* GDTの1番目(以下bootpack.cのセグメントを指定) */
-    tss_b.cs = 2 * 8;   /* GDTの2番目 */
-    tss_b.ss = 1 * 8;   /* GDTの1番目 */
-    tss_b.ds = 1 * 8;   /* GDTの1番目 */
-    tss_b.fs = 1 * 8;   /* GDTの1番目 */
-    tss_b.gs = 1 * 8;   /* GDTの1番目 */
-    *((int *) (task_b_esp + 4)) = (int) sht_back;     /* スタックにバックアップ */
-    mt_init();  /* タスクスイッチの自動化 */
+    task_init(memman);
+    task_b = task_alloc();
+    task_b->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;    /* タスクBのためのスタック領域の確保（ESPはスタック領域の最終番地なことに注意） */
+    task_b->tss.eip = (int) &task_b_main;     /* タスクBを指定 */
+    task_b->tss.es = 1 * 8;   /* GDTの1番目(以下bootpack.cのセグメントを指定) */
+    task_b->tss.cs = 2 * 8;   /* GDTの2番目 */
+    task_b->tss.ss = 1 * 8;   /* GDTの1番目 */
+    task_b->tss.ds = 1 * 8;   /* GDTの1番目 */
+    task_b->tss.fs = 1 * 8;   /* GDTの1番目 */
+    task_b->tss.gs = 1 * 8;   /* GDTの1番目 */
+    *((int *) (task_b->tss.esp + 4)) = (int) sht_back;     /* スタックにバックアップ */
+    task_run(task_b);
 
     for (;;) {
         io_cli();                                                     /* 外部割り込み禁止（割り込み処理中の割り込み対策） */

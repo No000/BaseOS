@@ -203,6 +203,26 @@ void timer_settime(struct TIMER *timer, unsigned int timeout);
 void inthandler20(int *esp);
 
 /* mtask.c */
-extern struct TIMER *mt_timer;
-void mt_init(void);
-void mt_taskswitch(void);
+#define MAX_TASKS   1000    /* 最大タスク数 */
+#define TASK_GDT0   3       /* TSSをGDTの何番目から割り当てるのか */
+struct TSS32 {  /* 32bit ver task status segment */
+    int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;      /* タスク用変数 */
+    int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;     /* 32bitレジスタ */
+    int es, cs, ss, ds, fs, gs;     /* 16bitレジスタ */
+    int ldtr, iomap;        /* LDTR=0, iomap=0x4000_0000 */
+};
+struct TASK {
+    int sel, flags; /* sel(selector)はGDTの番号のこと */
+    struct TSS32 tss;   /* バックアップする各種レジスタ */
+};
+struct TASKCTL {
+    int running;   /* running:動作しているタスクの数 */
+    int now;    /* now:"現在"動作しているタスクがどれだかわかるようにするるための変数 */
+    struct TASK *tasks[MAX_TASKS];  /* タスク管理構造体 */
+    struct TASK tasks0[MAX_TASKS];  /* タスク管理構造体 */
+};
+extern struct TIMER *task_timer;
+struct TASK *task_init(struct MEMMAN *memman);  /* TASKCTLは巨大なのでメモリを確保 */
+struct TASK *task_alloc(void);
+void task_run(struct TASK *task);
+void task_switch(void);
