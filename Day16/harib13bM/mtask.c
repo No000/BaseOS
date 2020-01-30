@@ -75,3 +75,39 @@ void task_switch(void)
   }
   return;
 }
+
+void task_sleep(struct TASK *task)
+{
+  int i;
+  char ts = 0;  /* タスクスイッチするタイミングを最後にするためのフラグ */
+  if (task->flags == 2) {   /* 指定タスクがもし起きていたら */
+    if (task == taskctl->tasks[taskctl->now]) {
+      ts = 1; /* 自分自身を寝かせるので、あとでタスクスイッチする */
+    }
+    /* taskがどこにいるかを探す */
+    for (i = 0; i < taskctl->running; i++) {
+      if (taskctl->tasks[i] == task) {
+        /* ここにいた */
+        break;
+      }
+    }
+    taskctl->running--; /* 動作するタスクの記録用メタデータを減らす */
+    if (i < taskctl->now) { /* 現在動作しているメタデータをずらす */
+      taskctl->now--; /* ずれるので、これもあわせておく */
+    }
+    /* ずらし */
+    for (; i < taskctl->running; i++) {
+      taskctl->tasks[i] = taskctl->tasks[i + 1];
+    }
+    task->flags = 1; /* 動作をしていない状態 */
+    if (ts != 0) {
+      /* タスクスイッチをする */
+      if (taskctl->now >= taskctl->running) {
+        /* nowがおかしな値になっていたら、修正する */
+        taskctl->now = 0;
+      }
+      farjmp(0, taskctl->tasks[taskctl->now]->sel); /* タスクスイッチ */
+    }
+  }
+  return;
+}

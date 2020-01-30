@@ -35,8 +35,9 @@ void farjmp(int eip, int cs);
 struct FIFO32 {
     int *buf; /* バッファの位置を特定するためのアドレス(intに修正) */
     int p, q, size, free, flags; /* p：書き込み位置,q:読み込み位置,size:バッファの大きさ,free:バッファの空き容量,flags:あふれの確認フラグ, */
+    struct TASK *task;  /* 起こしたいタスクのデータ */
 };
-void fifo32_init(struct FIFO32 *fifo, int size, int *buf);  /* FIFOバッファの初期化 */
+void fifo32_init(struct FIFO32 *fifo, int size, int *buf, struct TASK *task);  /* FIFOバッファの初期化 */
 int fifo32_put(struct FIFO32 *fifo, int data);  /* FIFOへデータを送り込んで蓄える */
 int fifo32_get(struct FIFO32 *fifo);  /* FIFOからデータを1つとって来る */
 int fifo32_status(struct FIFO32 *fifo);   /* どのくらいデータがたまっているかを報告する */
@@ -226,3 +227,4 @@ struct TASK *task_init(struct MEMMAN *memman);  /* TASKCTLは巨大なのでメ�
 struct TASK *task_alloc(void);
 void task_run(struct TASK *task);
 void task_switch(void);
+void task_sleep(struct TASK *task);
