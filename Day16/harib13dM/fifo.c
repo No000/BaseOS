@@ -33,7 +33,7 @@ int fifo32_put(struct FIFO32 *fifo, int data)
   fifo->free--;                   /* バッファの空きが減った */
   if (fifo->task != 0) {
     if (fifo->task->flags != 2) { /* タスクが寝ていたら */
-      task_run(fifo->task); /* 起こしてあげる */
+      task_run(fifo->task, 0); /* 起こしてあげる（優先度は変更しないため0） */
     }
   }
   return 0;                       /* 0を返す */

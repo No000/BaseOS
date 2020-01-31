@@ -214,6 +214,7 @@ struct TSS32 {  /* 32bit ver task status segment */
 };
 struct TASK {
     int sel, flags; /* sel(selector)はGDTの番号のこと */
+    int priority;   /* priority：優先度 */
     struct TSS32 tss;   /* バックアップする各種レジスタ */
 };
 struct TASKCTL {
@@ -225,6 +226,6 @@ struct TASKCTL {
 extern struct TIMER *task_timer;
 struct TASK *task_init(struct MEMMAN *memman);  /* TASKCTLは巨大なのでメモリを確保 */
 struct TASK *task_alloc(void);
-void task_run(struct TASK *task);
+void task_run(struct TASK *task, int priority);
 void task_switch(void);
 void task_sleep(struct TASK *task);

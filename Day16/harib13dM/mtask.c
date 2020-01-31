@@ -18,6 +18,7 @@ struct TASK *task_init(struct MEMMAN *memman) /* タスク割り当てプログ�
   }
   task = task_alloc();
   task->flags = 2;  /* 動作中のマーク */
+  task->priority = 2; /* 初期値は0.02秒 */
   taskctl->running = 1;
   taskctl->now = 0;
   taskctl->tasks[0] = task;
@@ -55,23 +56,30 @@ struct TASK *task_alloc(void) /* タスク構造体の確保 */
   return 0; /* もう全部使用中 */
 }
 
-void task_run(struct TASK *task)  /* タスクを1つ追加する関数 */
+void task_run(struct TASK *task, int priority)  /* タスクを1つ追加する関数 */
 {
-  task->flags = 2; /* 動作中マーク */
-  taskctl->tasks[taskctl->running] = task;
-  taskctl->running++;
+  if (priority > 0) { /* 優先度0は優先度を変えたくない時に使用 */
+    task->priority = priority;  /* 優先度の変更 */
+  }
+  if (task->flags != 2) {
+    task->flags = 2; /* 動作中マーク */
+    taskctl->tasks[taskctl->running] = task;
+    taskctl->running++;
+  }
   return;
 }
 
 void task_switch(void)
 {
-  timer_settime(task_timer, 2);
-  if (taskctl->running >= 2) {  /* タスクが1つの時の処理 */
-    taskctl->now++;
-    if (taskctl->now == taskctl->running) { /* 一番後ろだったら一番前にする */
-      taskctl->now = 0;
-    }
-    farjmp(0, taskctl->tasks[taskctl->now]->sel);
+  struct TASK *task;
+  taskctl->now++;
+  if (taskctl->now == taskctl->running) {
+    taskctl->now = 0;
+  }
+  task = taskctl->tasks[taskctl->now];
+  timer_settime(task_timer, task->priority);  /* ここで優先度の時間設定がされる */
+  if (taskctl->running >= 2) {  /* タスクが2つであることの確認（CPUがエラーを起こす） */
+    farjmp(0, task->sel);
   }
   return;
 }
