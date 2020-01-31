@@ -51,6 +51,7 @@ void HariMain(void)
     shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);  /* シート全体の情報の初期化 */
     task_a = task_init(memman);
     fifo.task = task_a;
+    task_run(task_a, 1, 2); /* レベルは１, priorityは0？ */
     
     /* sht_back */
     sht_back  = sheet_alloc(shtctl);    /* 背景のシートの確保 */
@@ -75,7 +76,7 @@ void HariMain(void)
         task_b[i]->tss.fs = 1 * 8;
         task_b[i]->tss.gs = 1 * 8;
         *((int *) (task_b[i]->tss.esp + 4)) = (int) sht_win_b[i];
-        task_run(task_b[i], i + 1); /* i+1でタスクが1,2,3の順になる */
+        task_run(task_b[i], 2, i + 1); /* i+1でタスクが1,2,3の順になる;レベルは２ */
     }
 
     /* sht_win */
@@ -127,11 +128,11 @@ void HariMain(void)
                 sprintf(s, "%02X", i - 256);
                 putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, s, 2);
                 if (i < 0x54 + 256){
-                    if (keytable[i - 256] != 0 && cursor_x < 144) {   /* 通常文字 */
+                    if (keytable[i - 256] != 0 && cursor_x < 128) {   /* 通常文字 */
                         /* 一文字を表示してから、カーソルを一つ進める */
                         s[0] = keytable[i - 256];   /* i = 0x1e + 256 */
                         s[1] = 0;   /*  */
-                        putfonts8_asc_sht(sht_win, cursor_x, 28, COL8_000000, COL8_C6C6C6, s, 1);
+                        putfonts8_asc_sht(sht_win, cursor_x, 28, COL8_000000, COL8_FFFFFF, s, 1);
                         cursor_x += 8;
                     }
                 }
