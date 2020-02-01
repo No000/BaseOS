@@ -6,7 +6,7 @@
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char act);
 void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l);  /* 文字出力をまとめる */
 void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
-void make_wtitle8(unsigned char *buf, int xsize, char *tirle, char act);
+void make_wtitle8(unsigned char *buf, int xsize, char *title, char act);
 void console_task(struct SHEET *sheet); /* コンソール用のタスク */
 
 void HariMain(void)
@@ -108,10 +108,10 @@ void HariMain(void)
     sheet_updown(sht_mouse, 3); /* マウスの下敷きの高さを指定 */
     sprintf(s, "(%3d, %3d)", mx, my);
     putfonts8_asc_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, s, 10);
-    sprintf(s, "memory %dMB   free : %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024); 
+    sprintf(s, "memory %dMB   free : %dKB",
+        memtotal / (1024 * 1024), memman_total(memman) / 1024); 
     putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, s, 40);
     /* キーボードとマウスの許可は上に移動 */
-
     for (;;) {
         io_cli();  /* 外部割り込み禁止（割り込み処理中の割り込み対策） */
         if (fifo32_status(&fifo) == 0) { /* どちらからもデータが来てないことの確認 */
@@ -123,19 +123,29 @@ void HariMain(void)
             if (256 <= i && i <= 511) {  /* もしキーボードの方のデータが来ていたら */
                 sprintf(s, "%02X", i - 256);
                 putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, s, 2);
-                if (i < 0x54 + 256){
-                    if (keytable[i - 256] != 0 && cursor_x < 128) {   /* 通常文字 */
-                        /* 一文字を表示してから、カーソルを一つ進める */
-                        s[0] = keytable[i - 256];   /* i = 0x1e + 256 */
-                        s[1] = 0;   /*  */
-                        putfonts8_asc_sht(sht_win, cursor_x, 28, COL8_000000, COL8_FFFFFF, s, 1);
-                        cursor_x += 8;
+                if (i < 0x54 + 256 && keytable[i - 256] != 0) { /* 通常文字 */
+                    if (key_to == 0) {    /* タスクAへ */
+                        if (cursor_x < 128){
+                            /* 一文字を表示してから、カーソルを一つ進める */
+                            s[0] = keytable[i - 256];   /* i = 0x1e + 256 */
+                            s[1] = 0;   /*  */
+                            putfonts8_asc_sht(sht_win, cursor_x, 28, COL8_000000, COL8_FFFFFF, s, 1);
+                            cursor_x += 8;
+                        }
+                    } else {    /* コンソールへバッファ経由で */
+                        fifo32_put(&task_cons->fifo, keytable[i - 256] + 256);  /* 先に文字コードの値で渡してる */
                     }
                 }
-                if ( i == 256 + 0x0e && cursor_x > 8) { /* バックスペース */
-                    /* カーソルをスペースで消してから、カーソルを1つ戻す */
-                    putfonts8_asc_sht(sht_win, cursor_x, 28, COL8_000000, COL8_FFFFFF, " ", 1);
-                    cursor_x -= 8;
+                if ( i == 256 + 0x0e) { /* バックスペース */
+                    if (key_to == 0) {
+                        if (cursor_x > 8) {
+                            /* カーソルをスペースで消してから、カーソルを1つ戻す */
+                            putfonts8_asc_sht(sht_win, cursor_x, 28, COL8_000000, COL8_FFFFFF, " ", 1);
+                            cursor_x -= 8;
+                        }
+                    } else {    /* コンソールへ */
+                        fifo32_put(&task_cons->fifo, 8 + 256);  /* コンソール用タスクにバッファ経由で */
+                    }
                 }
                 if (i == 256 + 0x0f) {  /* Tab */
                     if (key_to == 0) {
@@ -295,37 +305,59 @@ void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c)
 
 void console_task(struct SHEET *sheet)
 {
-    struct FIFO32 fifo;     /* FIFOバッファ */
     struct TIMER *timer;    /* タイマ */
     struct TASK *task = task_now(); /* スリープから復帰する際にtask_nowから参照する */
+    int i, fifobuf[128], cursor_x = 16, cursor_c = COL8_000000;
+    char s[2];
 
-    int i, fifobuf[128], cursor_x = 8, cursor_c = COL8_000000;
-    fifo32_init(&fifo, 128, fifobuf, task); /* バッファの初期化 */
-
+    fifo32_init(&task->fifo, 128, fifobuf, task); /* バッファの初期化 */
     timer = timer_alloc();
-    timer_init(timer, &fifo, 1);
+    timer_init(timer, &task->fifo, 1);
     timer_settime(timer, 50);   /* カーソル用（0.5秒） */
+
+    /* プロンプトの表示 */
+    putfonts8_asc_sht(sheet, 8, 28, COL8_FFFFFF, COL8_000000, ">", 1);
 
     for (;;) {
         io_cli();   /* IF=0(割り込み無効) */
-        if (fifo32_status(&fifo) == 0) {    /* バッファにデータが来ていなければ */
+        if (fifo32_status(&task->fifo) == 0) {    /* バッファにデータが来ていなければ */
             task_sleep(task);   /* スリープ */
             io_sti();   /* IF=1 */
         } else {
-            i = fifo32_get(&fifo);  /* バッファからデータを1バイト引き出す */
+            i = fifo32_get(&task->fifo);  /* バッファからデータを1バイト引き出す */
             io_sti();   /* IF=1 */
             if (i <= 1) {   /* カーソル用タイマ */
                 if (i != 0) {
-                    timer_init(timer, &fifo, 0); /* 次は0を */
+                    timer_init(timer, &task->fifo, 0); /* 次は0を */
                     cursor_c = COL8_FFFFFF;
                 } else {
-                    timer_init(timer, &fifo, 1); /* 次は1を */
+                    timer_init(timer, &task->fifo, 1); /* 次は1を */
                     cursor_c = COL8_000000;
                 }
                 timer_settime(timer, 50);
-                boxfill8(sheet->buf, sheet->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
-                sheet_refresh(sheet, cursor_x, 28, cursor_x + 8, 44);
             }
+            if (256 <= i && i <= 511) { /* キーボードデータ（タスクA経由） */
+                if (i == 8 + 256) {
+                    /* バックスペース */
+                    if (cursor_x > 16) {
+                        /* カーソルをスペースで消してから、カーソルを1つ戻す */
+                        putfonts8_asc_sht(sheet, cursor_x, 28, COL8_FFFFFF, COL8_000000, " ", 1);
+                        cursor_x -= 8;
+                    }
+                } else {
+                    /* 一般文字 */
+                    if (cursor_x < 240) {
+                        /* 一文字表示をしてから、カーソルを1つ進める */
+                        s[0] = i - 256;
+                        s[1] = 0;
+                        putfonts8_asc_sht(sheet, cursor_x, 28, COL8_FFFFFF, COL8_000000, s, 1);
+                        cursor_x += 8;
+                    }
+                }
+            }
+            /* カーソルの再表示 */
+            boxfill8(sheet->buf, sheet->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
+            sheet_refresh(sheet, cursor_x, 28, cursor_x + 8, 44);
         }
     }
 }

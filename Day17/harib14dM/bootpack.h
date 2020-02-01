@@ -217,6 +217,7 @@ struct TSS32 {  /* 32bit ver task status segment */
 struct TASK {
     int sel, flags; /* sel(selector)はGDTの番号のこと */
     int level,priority;   /* priority：優先度 */
+    struct FIFO32 fifo;   /* タスクに渡すFIFOバッファ */
     struct TSS32 tss;   /* バックアップする各種レジスタ */
 };
 struct TASKLEVEL {
