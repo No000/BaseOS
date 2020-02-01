@@ -44,7 +44,7 @@ void HariMain(void)
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   '_', 0,   0,   0,   0,   0,   0,   0,   0,   0,   '|', 0,   0
     };
-    int key_to = 0, key_shift = 0;
+    int key_to = 0, key_shift = 0, key_leds = (binfo->leds >> 4) & 7; /* key_to：ウィンドウ, key_shift：シフト, key_les：SL・NL・CL */
 
     init_gdtidt(); /* GDT、IDTの初期化 */
     init_pic(); /* PICの初期か */
@@ -144,8 +144,14 @@ void HariMain(void)
                 } else {
                     s[0] = 0;   /* 変換できなさそうなキーコードの場合 */
                 }
-                if (s[0] != 0) {
-                    if (key_to == 0) {
+                if ('A' <= s[0] && s[0] <= 'Z') {    /* 入力文字がアルファベット */
+                    if (((key_leds & 4) == 0 && key_shift== 0) ||   /* shiftとcapslock */
+                            ((key_leds & 4) != 0 && key_shift != 0)) {
+                        s[0] += 0x20; /* 大文字を小文字に変換 */
+                    }
+                }
+                if (s[0] != 0) {    /* 通常文字 */
+                    if (key_to == 0) {  /* タスクAへ */
                         if (cursor_x < 128) {
                             /* １文字表示してから、カーソルを1つ進める */
                             s[1] = 0;
