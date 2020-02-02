@@ -217,7 +217,7 @@ void HariMain(void)
                     key_shift &= ~2;
                 }
                 if (i == 256 + 0x3a) {  /* CapsLock */
-                    key_shift ^= 4;
+                    key_leds ^= 4;
                     fifo32_put(&keycmd, KEYCMD_LED);
                     fifo32_put(&keycmd, key_leds);
                 }
