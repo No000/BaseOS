@@ -7,7 +7,7 @@
 struct FILEINFO {
     unsigned char name[8], ext[3], type; /* name：Fileネーム、ext：拡張子、type：ファイル情報 */
     char reserve[10];   /* 予約領域 */
-    unsigned short time, data, clustno; /* time：時刻、data：日付、clustno：セクタ番号*/
+    unsigned short time, date, clustno; /* time：時刻、date：日付、clustno：セクタ番号*/
     unsigned int size;  /* Fileサイズ */
 };
 
@@ -388,7 +388,7 @@ void console_task(struct SHEET *sheet, unsigned int memtotal)
     struct TIMER *timer;    /* タイマ */
     struct TASK *task = task_now(); /* スリープから復帰する際にtask_nowから参照する */
     int i, fifobuf[128], cursor_x = 16, cursor_y = 28, cursor_c = -1;
-    char s[30], cmdline[30];    /* cmdline：キー入力保管バッファ */
+    char s[30], cmdline[30], *p;    /* cmdline：キー入力保管バッファ */
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
     int x, y;
     struct FILEINFO *finfo = (struct FILEINFO *) (ADR_DISKIMG + 0x002600);
@@ -484,9 +484,67 @@ void console_task(struct SHEET *sheet, unsigned int memtotal)
                             }
                         }
                         cursor_y = cons_newline(cursor_y, sheet);
+                    } else if (cmdline[0] == 't' && cmdline[1] == 'y' && cmdline[2] == 'p' &&
+                        cmdline[3] == 'e' && cmdline[4] == ' ') {
+                            /* typeコマンド */
+                            /* ファイル名を準備する */
+                            for (y = 0; y < 11; y++) {
+                                s[y] = ' '; /* s[0~10]を空白で埋める */
+                            }
+                            y = 0;  /* yをリセット */
+                            for (x = 5; y < 11 && cmdline[x] != 0; x++) {   /* x=5 */
+                                if (cmdline[x] == '.' && y <= 8) {  /* .なので拡張子がくる */
+                                    y = 8;  /* 構造体の形式に合わせてる */
+                                } else {
+                                    s[y] = cmdline[x];  /* ファイル名をa[y]へ */
+                                    if ('a' <= s[y] && s[y] <= 'z') {
+                                        /* 小文字は大文字に直す */
+                                        s[y] -= 0x20;   /* ASC2 */
+                                    }
+                                    y++;    /* 1文字ずつ */
+                                }
+                            }
+                            /* ファイルを探す */
+                            for (x = 0; x < 224; ) {    /* データの探索 */
+                                if (finfo[x].name[0] == 0x00) { /* 最後の証の0x00についた場合 */
+                                    break;
+                                }
+                                if ((finfo[x].type & 0x18) == 0) {  /* ファイルではない情報＋ディレクトリ ""以外のデータ"" */
+                                    for (y = 0; y < 11; y++) {  /* ファイル名を探索 */
+                                        if (finfo[x].name[y] != s[y]) { /* 1文字ずつチェック */
+                                            goto type_next_file;    /* ファイル名が一致しなかった */
+                                        }
+                                    }
+                                    break;  /* ファイルが見つかった */
+                                }
+                        type_next_file:
+                                x++;    /* 次のファイル */
+                        }
+                        if (x < 224 && finfo[x].name[0] != 0x00) {
+                            /* ファイルが見つかった場合 */
+                            y = finfo[x].size;  /* 表示するサイズをカウンタに入れる */
+                            p = (char *) (finfo[x].clustno * 512 + 0x003e00 + ADR_DISKIMG); /* ディスクイメージ内での番地 */
+                            cursor_x = 8;   /* カーソルの位置を調整 */
+                            for (x = 0; x < y; x++) {
+                                /* 1文字ずつ出力 */
+                                s[0] = p[x];    /* 1文字ずつ入れる */
+                                s[1] = 0;
+                                putfonts8_asc_sht(sheet, cursor_x, cursor_y, COL8_FFFFFF, COL8_000000, s, 1);
+                                cursor_x += 8;
+                                if (cursor_x == 8 + 240) {  /* カーソルの位置がコンソールの端まで来たら */
+                                    cursor_x = 8;   /* 元に戻す */
+                                    cursor_y = cons_newline(cursor_y, sheet);   /* 次の行に移動 */
+                                }
+                            }
+                        } else {    /* ファイルがなかった時のエラー処理 */
+                            /* ファイルが見つからなかった場合 */
+                            putfonts8_asc_sht(sheet, 8, cursor_y, COL8_FFFFFF, COL8_000000, "File not found.", 15);
+                            cursor_y = cons_newline(cursor_y, sheet);
+                        }
+                        cursor_y = cons_newline(cursor_y, sheet);
                     } else if (cmdline[0] != 0) {
                         /* コマンドではなく、さらに空行でもない */
-                        putfonts8_asc_sht(sheet, 8, cursor_y, COL8_FFFFFF, COL8_000000, "Bad command", 12);
+                        putfonts8_asc_sht(sheet, 8, cursor_y, COL8_FFFFFF, COL8_000000, "Bad command.", 12);
                         cursor_y = cons_newline(cursor_y, sheet);
                         cursor_y = cons_newline(cursor_y, sheet);
                     }
