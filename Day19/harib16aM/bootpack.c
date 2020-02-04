@@ -530,7 +530,7 @@ void console_task(struct SHEET *sheet, unsigned int memtotal)
                                 s[0] = p[x];    /* 1文字ずつ入れる */
                                 s[1] = 0;
                                 putfonts8_asc_sht(sheet, cursor_x, cursor_y, COL8_FFFFFF, COL8_000000, s, 1);
-                                cursor_x += 8;
+                                cursor_x += 8;  /* 一文字カーソルを進める */
                                 if (cursor_x == 8 + 240) {  /* カーソルの位置がコンソールの端まで来たら */
                                     cursor_x = 8;   /* 元に戻す */
                                     cursor_y = cons_newline(cursor_y, sheet);   /* 次の行に移動 */
