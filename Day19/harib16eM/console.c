@@ -14,6 +14,7 @@ void console_task(struct SHEET *sheet, unsigned int memtotal)
     int x, y;
     struct FILEINFO *finfo = (struct FILEINFO *) (ADR_DISKIMG + 0x002600);
     int *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+    struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
 
     fifo32_init(&task->fifo, 128, fifobuf, task); /* バッファの初期化 */
     timer = timer_alloc();
@@ -181,6 +182,45 @@ void console_task(struct SHEET *sheet, unsigned int memtotal)
                         } else {    /* ファイルがなかった時のエラー処理 */
                             /* ファイルが見つからなかった場合 */
                             putfonts8_asc_sht(sheet, 8, cursor_y, COL8_FFFFFF, COL8_000000, "File not found.", 15);
+                            cursor_y = cons_newline(cursor_y, sheet);
+                        }
+                        cursor_y = cons_newline(cursor_y, sheet);
+                    } else if (strcmp(cmdline, "hlt") == 0) {
+                        /* hlt.hrbアプリケーションを起動 */
+                        for (y = 0; y < 11; y++) {
+                            s[y] = ' '; /* 11バイト分スペースを入れる */
+                        }
+                        s[0] = 'H';
+                        s[1] = 'L';
+                        s[2] = 'T';
+                        s[8] = 'H';
+                        s[9] = 'R';
+                        s[10] = 'B';    /* 探索するファイル名を格納 */
+                        for (x = 0; x < 224; ) {
+                            if (finfo[x].name[0] == 0x00) {
+                                break;  /* プログラムが無かった */
+                            }
+                            if ((finfo[x].type & 0x18) == 0) {
+                                for (y = 0; y < 11; y++) {
+                                    if (finfo[x].name[y] != s[y]) { /* sに指定したプログラムで無かったら */
+                                        goto hlt_next_file; /* 次のプログラムを確認しにいく */
+                                    }
+                                }
+                                break; /* ファイルが見つかった */
+                            }
+                hlt_next_file:
+                            x++;
+                        }
+                        if (x < 224 && finfo[x].name[0] != 0x00) {
+                            /* ファイルが見つかった場合 */
+                            p = (char *) memman_alloc_4k(memman, finfo[x].size); /* メモリ確保 */
+                            file_loadfile(finfo[x].clustno, finfo[x].size, p, fat, (char *) (ADR_DISKIMG + 0x003e00)); /* ファイルをロード */
+                            set_segmdesc(gdt + 1003, finfo[x].size - 1, (int) p, AR_CODE32_ER); /* ロードしたファイルをセグメントに登録 */
+                            farjmp(0, 1003 * 8); /* セグメントのタスクへ飛ぶ */
+                            memman_free_4k(memman, (int) p, finfo[x].size); /* プログラム実行後、メモリ解放 */
+                        } else {
+                            /* ファイルが見つからなかった場合 */
+                            putfonts8_asc_sht(sheet, 8, cursor_y, COL8_FFFFFF, COL8_000000, "File not found", 15);
                             cursor_y = cons_newline(cursor_y, sheet);
                         }
                         cursor_y = cons_newline(cursor_y, sheet);
