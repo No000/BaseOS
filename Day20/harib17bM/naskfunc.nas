@@ -5,7 +5,7 @@
 [INSTRSET "i486p"]      ; 486命令まで使いたいという記述
 [BITS 32]               ; 32ビットモード用の機械語を作らせる
 [FILE "naskfunc.nas"]   ; ソースファイル名情報
-
+; オブジェクトファイルのための情報
     GLOBAL  _io_hlt,  _io_cli, _io_sti, _io_stihlt   ; このプログラムに含まれる関数名(グローバル関数？)
     GLOBAL  _io_in8,  _io_in16,  _io_in32
     GLOBAL  _io_out8, _io_out16, _io_out32
@@ -21,12 +21,8 @@
     EXTERN  _inthandler20, _inthandler21
     EXTERN  _inthandler27, _inthandler2c
     EXTERN  _cons_putchar
-
-; オブジェクトファイルのための情報
 ; 以下は実際の関数
-
 [SECTION .text]         ; オブジェクトファイルではこれを書いてからプログラムを書く
-
 
 _io_hlt:    ; void io_hlt(void);
     HLT
