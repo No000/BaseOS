@@ -219,10 +219,12 @@ _farcall:       ; void farcall(int eip, int cs);
 
 _asm_cons_putchar:
     STI
+    PUSHAD  ; 凡庸レジスタをスタックへバックアップ
     PUSH    1
     AND     EAX,0xff    ; AHやEAXの上位を0にして、EAXに文字コードを入った状態にする。
     PUSH    EAX
     PUSH    DWORD [0x0fec]  ; メモリの内容を読み込んでその値をPUSHする
     CALL    _cons_putchar
     ADD     ESP,12      ; スタックに積んだデータを捨てる
+    POPAD   ; スタックからレジスタ情報を戻す
     IRETD   ; 割り込み処理ルーチンから戻るので
