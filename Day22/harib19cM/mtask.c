@@ -134,6 +134,7 @@ struct TASK *task_alloc(void) /* タスク構造体の確保 */
       task->tss.gs = 0;
       task->tss.ldtr = 0;
       task->tss.iomap = 0x40000000;
+      task->tss.ss0 = 0;
       return task;
     }
   }
