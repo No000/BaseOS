@@ -259,7 +259,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
     struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
     char name[18], *p, *q;
     struct TASK *task = task_now();
-    int i;
+    int i, segsiz, datsiz, esp, dathrb;
 
     /* コマンドラインからファイル名を生成 */
     for (i = 0; i < 13; i++) {
@@ -285,18 +285,25 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
     if (finfo != 0) {
         /* ファイルが見つかった場合のプログラム実行処理 */
         p = (char *) memman_alloc_4k(memman, finfo->size);
-        q = (char *) memman_alloc_4k(memman, 64 * 1024);    /* APP用 */
-        *((int *) 0xfe8) = (int) p; /* 0xfecにコードッセグメントのアドレスをバックアップ */
         file_loadfile(finfo->clustno, finfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
-        set_segmdesc(gdt + 1003, finfo->size - 1, (int) p, AR_CODE32_ER + 0x60); /* アプリ用のセグメント設定 */
-        set_segmdesc(gdt + 1004, 64 * 1024 - 1,   (int) q, AR_DATA32_RW + 0x60); /* たぶんアクセス権がらみ？ */
-        if (finfo->size >= 8 && strncmp(p + 4, "Hari", 4) == 0) {
-            start_app(0x1b, 1003 * 8, 64 * 1024, 1004 * 8, &(task->tss.esp0));
+        if (finfo->size >= 36 && strncmp(p + 4, "Hari", 4) == 0 && *p == 0x00) {
+            segsiz = *((int *) (p + 0x0000));
+            esp    = *((int *) (p + 0x000c));
+            datsiz = *((int *) (p + 0x0010));
+            dathrb = *((int *) (p + 0x0014));
+            q = (char *) memman_alloc_4k(memman, segsiz);    /* APP用 */
+            *((int *) 0xfe8) = (int) q; /* 0xfecにコードッセグメントのアドレスをバックアップ */
+            set_segmdesc(gdt + 1003, finfo->size - 1, (int) p, AR_CODE32_ER + 0x60); /* アプリ用のセグメント設定 */
+            set_segmdesc(gdt + 1004, segsiz - 1,      (int) q, AR_DATA32_RW + 0x60); /* たぶんアクセス権がらみ？ */
+            for (i = 0; i < datsiz; i++) {
+                q[esp + i] = p[dathrb + i];
+            }
+            start_app(0x1b, 1003 * 8, esp, 1004 * 8, &(task->tss.esp0));
+            memman_free_4k(memman, (int) q, segsiz);
         } else {
-            start_app(0, 1003 * 8, 64 * 1024, 1004 * 8, &(task->tss.esp0)); /* TSSに登録(espとOSのセグメント) */
+            cons_putstr0(cons, ".hrb file format error.\n");
         }
         memman_free_4k(memman, (int) p, finfo->size);
-        memman_free_4k(memman, (int) q, 64 * 1024);
         cons_newline(cons);
         return 1;
     }
@@ -306,18 +313,15 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 
 int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax) /* 機能番号対応文字表示API */
 {
-    int cs_base = *((int *) 0xfe8);
+    int ds_base = *((int *) 0xfe8);
     struct TASK *task = task_now();
     struct CONSOLE *cons = (struct CONSOLE *) *((int *) 0x0fec);
-    char s[12];
     if (edx == 1) {
         cons_putchar(cons, eax & 0xff, 1);
     } else if (edx == 2) {
-    /*    cons_putstr0(cons, (char *) ebx + cs_base); */
-    sprintf(s,"%08X\n", ebx);
-    cons_putstr0(cons, s);
+        cons_putstr0(cons, (char *) ebx + ds_base);
     } else if (edx == 3) {
-        cons_putstr1(cons, (char *) ebx + cs_base, ecx);
+        cons_putstr1(cons, (char *) ebx + ds_base, ecx);
     } else if (edx == 4) {  /* 終了API */
         return &(task->tss.esp0);
     }
