@@ -309,10 +309,13 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
     int cs_base = *((int *) 0xfe8);
     struct TASK *task = task_now();
     struct CONSOLE *cons = (struct CONSOLE *) *((int *) 0x0fec);
+    char s[12];
     if (edx == 1) {
         cons_putchar(cons, eax & 0xff, 1);
     } else if (edx == 2) {
-        cons_putstr0(cons, (char *) ebx + cs_base);
+    /*    cons_putstr0(cons, (char *) ebx + cs_base); */
+    sprintf(s,"%08X\n", ebx);
+    cons_putstr0(cons, s);
     } else if (edx == 3) {
         cons_putstr1(cons, (char *) ebx + cs_base, ecx);
     } else if (edx == 4) {  /* 終了API */
