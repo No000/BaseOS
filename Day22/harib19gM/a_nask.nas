@@ -65,7 +65,7 @@ _api_putstrwin: ; void api_putstrwin(int win, int x, int y, int col, int len, ch
     POP     EDI
     RET
 
-_api_boxfilwin: ; void api_openwin(int win, int x0, int y0, int x1, int y1, int col);
+_api_boxfilwin: ; void api_boxfilwin(int win, int x0, int y0, int x1, int y1, int col);
     PUSH    EDI
     PUSH    ESI
     PUSH    EBP

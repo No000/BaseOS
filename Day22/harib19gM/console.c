@@ -339,7 +339,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
         sheet_updown(sht, 3);   /* 3という高さはtask_aの上 */
         reg[7] = (int) sht;
     } else if (edx == 6) {
-        sht = sheet_alloc(shtctl);
+        sht = (struct SHEET *) ebx;
         putfonts8_asc(sht->buf, sht->bxsize, esi, edi, eax, (char *) ebp + ds_base);
         sheet_refresh(sht, esi, edi, esi + ecx * 8, edi + 16);
     } else if (edx == 7) {
