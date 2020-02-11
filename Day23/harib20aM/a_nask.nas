@@ -93,7 +93,8 @@ _api_initmalloc:    ; void _api_initmalloc(void);
     MOV     EBX,[CS:0x0020]     ; malloc領域の番地
     MOV     EAX,EBX
     ADD     EAX,32*1024     ; 32KBを足す
-    MOV     ECX,EAX
+    MOV     ECX,[CS:0x0000] ; データセグメントの大きさ
+    SUB     ECX,EAX
     INT     0x40
     POP     EBX
     RET
@@ -110,9 +111,9 @@ _api_malloc:        ; char *_api_malloc(int size);
 _api_free:          ; void _api_free(char *addr, int size);
     PUSH    EBX
     MOV     EDX,10
-    MOV     EAX,[CS:0x0020]
-    MOV     EBX,[ESP+ 8]        ; addr
-    MOV     EAX,[ESP+12]        ; size
+    MOV     EBX,[CS:0x0020]
+    MOV     EAX,[ESP+ 8]        ; addr
+    MOV     ECX,[ESP+12]        ; size
     INT     0x40
     POP     EBX
     RET
