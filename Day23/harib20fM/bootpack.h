@@ -256,6 +256,7 @@ void make_wtitle8(unsigned char *buf, int xsize, char *title, char act);
 struct CONSOLE {
     struct SHEET *sht;
     int cur_x, cur_y, cur_c;
+    struct TIMER *timer;    /* 点滅用等 */
 };
 void console_task(struct SHEET *sheet, unsigned int memtotal); /* コンソール用のタスク */
 void cons_putchar(struct CONSOLE *cons, int chr, char move);
