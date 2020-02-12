@@ -234,6 +234,9 @@ void HariMain(void)
                     task_cons->tss.eip = (int) asm_end_app;
                     io_sti();
                 }
+                if (i == 256 + 0x57 && shtctl->top > 2) {   /* F11+下敷きが2枚以上 */
+                    sheet_updown(shtctl->sheets[1], shtctl->top - 1);   /* arg1：背景の一個上の下敷き、arg2：マウスの一個下の下敷き */
+                }
                 if (i == 256 + 0xfa) {  /* キーボードがデータを無事に受け取った */
                     keycmd_wait = -1;
                 }
