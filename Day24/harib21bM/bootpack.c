@@ -42,6 +42,8 @@ void HariMain(void)
     };
     int key_to = 0, key_shift = 0, key_leds = (binfo->leds >> 4) & 7, keycmd_wait = -1; /* key_to：ウィンドウ, key_shift：シフト, key_les：SL・NL・CL */
     struct CONSOLE *cons;
+    int j, x, y;    /* ウィンドウupdpwn */
+    struct SHEET *sht;
 
     init_gdtidt(); /* GDT、IDTの初期化 */
     init_pic(); /* PICの初期か */
@@ -250,7 +252,6 @@ void HariMain(void)
                 }
                 sheet_refresh(sht_win, cursor_x, 28, cursor_x + 8, 44);
             } else if (512 <= i && i <= 767) {         /* もしもマウスのデータが来ていたら */
-                      /* IFに1をセット（外部割り込みの許可） */
                 if (mouse_decode(&mdec, i - 512) != 0) {
                     /* マウスカーソルの移動 */
                     mx += mdec.x;
@@ -270,7 +271,18 @@ void HariMain(void)
                     sheet_slide(sht_mouse, mx, my);
                     if ((mdec.btn & 0x01) != 0) {
                         /* 左ボタンを押していたら、sht_winを動かす */
-                        sheet_slide(sht_win, mx - 80, my - 8);
+                        /* 上の下じきから順番にマウスが指している下敷きを探す */
+                        for (j = shtctl->top - 1; j > 0; j--) {
+                            sht = shtctl->sheets[j];
+                            x = mx - sht->vx0;
+                            y = my - sht->vy0;
+                            if (0 <= x && x < sht->bxsize && 0 <= y && y < sht->bysize) {
+                                if (sht->buf[y * sht->bxsize + x] != sht->col_inv) {
+                                    sheet_updown(sht, shtctl->top - 1);
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
             } else if (i <= 1) {    /* カーソル用タイマ */
