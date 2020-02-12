@@ -171,6 +171,7 @@ struct SHEET {
     /* boxsize:下敷きの大きさx, bysize:下敷きの大きさy, vx0:下敷きの位置x, vy0:下敷きの位置y */
     /*col_inv:透明色の番号, height:下敷きの高さ, flags:下敷きの設定情報 */
     struct SHTCTL *ctl; /* ctlをこちらでも管理 */
+    struct TASK *task;  /* 終了させるタスクかの判定 */
 };
 /* 各種下敷きの管理情報 */
 struct SHTCTL {

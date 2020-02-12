@@ -42,6 +42,7 @@ struct SHEET *sheet_alloc(struct SHTCTL *ctl)
       sht = &ctl->sheets0[i];  /* シートの番地を構造体のアドレスにする */
       sht->flags = SHEET_USE; /* 使用中マーク */
       sht->height = -1; /* 非表示中 */
+      sht->task = 0;  /* 自動で閉じる機能を使わない */
       return sht;   /* 情報のある場所の構図体のアドレスを返す */
     }
   }
