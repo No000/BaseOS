@@ -414,11 +414,19 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
             if (i == 3) {   /* カーソルOFF */
                 cons->cur_c = -1;
             }
-            if (256 <= i && i <= 511) { /* キーボードデータ（タスクA経由） */
+            if (i >= 256) { /* キーボードデータ（タスクA経由） */
                 reg[7] = i - 256;
                 return 0;   /* 無限ループぬけ */
             }
         }
+    } else if (edx == 16) { /* タイマの取得 */
+        reg[7] = (int) timer_alloc();
+    } else if (edx == 17) { /* タイマの送信データ設定 */
+        timer_init((struct TIMER *) ebx, &task->fifo, eax + 256);
+    } else if (edx == 18) { /* タイマの時間設定 */
+        timer_settime((struct TIMER *) ebx, eax);
+    } else if (edx == 19) { /* タイマの解放 */
+        timer_free((struct TIMER *) ebx);
     }
     return 0;
 }
