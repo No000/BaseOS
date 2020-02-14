@@ -324,8 +324,8 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax) /* 機能番号対応文字表示API */
 {
     struct TASK *task = task_now();
-    int ds_base = task->cons;
-    struct CONSOLE *cons = task->ds_base;
+    int ds_base = task->ds_base;
+    struct CONSOLE *cons = task->cons;
     struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
     struct SHEET *sht;
     int *reg = &eax + 1;    /* eaxの次の番地 */
