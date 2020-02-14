@@ -230,6 +230,8 @@ struct TASK {
     int level,priority;   /* priority：優先度 */
     struct FIFO32 fifo;   /* タスクに渡すFIFOバッファ */
     struct TSS32 tss;   /* バックアップする各種レジスタ */
+    struct CONSOLE *cons;   /* コンソールデータ */
+    int ds_base;    /* コンソールタスクごとのデータセグメント */
 };
 struct TASKLEVEL {
     int running; /* 動作しているタスクの数 */
