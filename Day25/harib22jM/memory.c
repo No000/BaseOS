@@ -114,6 +114,7 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size)
     }
     /* 前とはまとめられなかった */
     if (i < man->frees) {
+        /* 後ろがある */
         if (addr + size == man->free[i].addr) {
             /* 後ろとはまとめられる */
             man->free[i].addr = addr;

@@ -27,7 +27,6 @@ void init_gdtidt(void)
     set_gatedesc(idt + 0x0d, (int) asm_inthandler0d, 2 * 8, AR_INTGATE32);  /* 0x0d番目に一般保護例外の割り込みを設定 */
     set_gatedesc(idt + 0x20, (int) asm_inthandler20, 2 * 8, AR_INTGATE32);  /* 0x20番目にタイマー割り込みを設定 */
     set_gatedesc(idt + 0x21, (int) asm_inthandler21, 2 * 8, AR_INTGATE32);  /* 0x21番目にasm_inthandler21を登録 */
-    set_gatedesc(idt + 0x27, (int) asm_inthandler27, 2 * 8, AR_INTGATE32);  /* 0x27番目にasm_inthandler27を登録 */
     set_gatedesc(idt + 0x2c, (int) asm_inthandler2c, 2 * 8, AR_INTGATE32);  /* 0x2c番目にasm_inthandler2cを登録 */
     set_gatedesc(idt + 0x40, (int) asm_hrb_api,      2 * 8, AR_INTGATE32 + 0x60);  /* 0x40番目にasm_hrb_apiを登録 */
 

@@ -88,6 +88,7 @@ struct TASK *task_init(struct MEMMAN *memman) /* タスク割り当てプログ�
     taskctl->level[i].running = 0;
     taskctl->level[i].now = 0;
   }
+  
   task = task_alloc();
   task->flags = 2;  /* 動作中のマーク */
   task->priority = 2; /* 初期値は0.02秒 */
