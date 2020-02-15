@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-void console_task(struct SHEET *sheet, unsigned int memtotal)
+void console_task(struct SHEET *sheet, int memtotal)
 {
     struct TASK *task = task_now(); /* スリープから復帰する際にtask_nowから参照する */
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
@@ -164,7 +164,7 @@ void cons_putstr1(struct CONSOLE *cons, char *s, int l) /* 文字数指定型 */
     return;
 }
 
-void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, unsigned int memtotal)
+void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 {
     if (strcmp(cmdline, "mem") == 0) {
         cmd_mem(cons, memtotal);
@@ -183,7 +183,7 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, unsigned int mem
     return;
 }
 
-void cmd_mem(struct CONSOLE *cons, unsigned int memtotal)
+void cmd_mem(struct CONSOLE *cons, int memtotal)
 {
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
     char s[60];

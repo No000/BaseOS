@@ -81,6 +81,8 @@ next:
     JMP     0xc200          ; haribote.sysが読み込まれている、メモリアドレスにジャンプする
 
 error:
+    MOV     AX,0
+    MOV     ES,AX
     MOV     SI,msg
 putloop:
     MOV     AL,[SI]

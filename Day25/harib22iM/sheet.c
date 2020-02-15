@@ -3,14 +3,12 @@
 #include "bootpack.h"
 
 #define SHEET_USE   1
-
-struct SHTCTL *shtctl_init(struct MEMMAN *memman, unsigned char *vram, int xsize, int ysize)
 /* 構造体が戻り値 */
-{
+struct SHTCTL *shtctl_init(struct MEMMAN *memman, unsigned char *vram, int xsize, int ysize)
+{   /* (struct SHTCTL *)はポインタに型が違うものを代入しようとしていると警告されることへの対策 */
   struct SHTCTL *ctl; /* 構造体定義 */
   int i;  /* ループカウンタ */
   ctl = (struct SHTCTL *) memman_alloc_4k(memman, sizeof (struct SHTCTL)); /* メモリを確保する（sizeofで構造体の必要なメモリを計算） */
-  /* (struct SHTCTL *)はポインタに型が違うものを代入しようとしていると警告されることへの対策 */
   if (ctl == 0) {     /* メモリが確保できなかった場合 */
     goto err;         /* 例外処理 */
   }
