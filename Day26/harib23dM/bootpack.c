@@ -15,7 +15,7 @@ void HariMain(void)
     char s[40];
     struct FIFO32 fifo, keycmd;
     int fifobuf[128], keycmd_buf[32], *cons_fifo[2];
-    int mx, my, i;
+    int mx, my, i, new_mx = -1, new_my = 0, new_wx = 0x7fffffff, new_wy = 0;
     unsigned int memtotal;
     struct MOUSE_DEC mdec; /* マウスのデータを構造体で管理（タグ：mdec） */
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
@@ -131,8 +131,19 @@ void HariMain(void)
         }
         io_cli();  /* 外部割り込み禁止（割り込み処理中の割り込み対策） */
         if (fifo32_status(&fifo) == 0) { /* どちらからもデータが来てないことの確認 */
-            task_sleep(task_a);
-            io_sti();  /* 外部割り込みの許可 */
+            /* FIFOが空っぽになったので、保留している描画があれば実行する */
+            if (new_mx >= 0) {
+                io_sti();
+                sheet_slide(sht_mouse, new_mx, new_my);
+                new_mx = -1;
+            } else if (new_wx != 0x7fffffff) {
+                io_sti();
+                sheet_slide(sht, new_wx, new_wy);
+                new_wx = 0x7fffffff;
+            } else {
+                task_sleep(task_a);
+                io_sti();  /* 外部割り込みの許可 */
+            }
         } else {
             i = fifo32_get(&fifo);
             io_sti();
@@ -232,6 +243,8 @@ void HariMain(void)
                     if (my > binfo->scrny - 1) {
                         my = binfo->scrny - 1;
                     }
+                    new_mx = mx;
+                    new_my = my;
                     sheet_slide(sht_mouse, mx, my);
                     if ((mdec.btn & 0x01) != 0) {
                         /* 左ボタンを押していたら、sht_winを動かす */
@@ -254,6 +267,7 @@ void HariMain(void)
                                             mmx = mx;   /* ウィンドウの移動モードへ */
                                             mmy = my;
                                             mmx2 = sht->vx0;
+                                            new_wy = sht->vy0;
                                         }
                                         if (sht->bxsize - 21 <= x && x < sht->bxsize - 5 && 5 <= y && y < 19) { /* ×ボタンの座標 */
                                             /* 「x」ボタンをクリック */
@@ -274,12 +288,18 @@ void HariMain(void)
                             /* ウィンドウ移動モードの場合 */
                             x = mx - mmx;   /* マウスの移動量を計算 */
                             y = my - mmy;
+                            new_wx = (mmx2 + x + 2) & ~3;
+                            new_wy = new_wy + y;
                             sheet_slide(sht, (mmx2 + x + 2) & ~3, sht->vy0 + y);
                             mmy = my;   /* 移動後の座標を更新 */
                         }
                     } else {
                         /* 左ボタンを押していない */
                         mmx = -1;    /* 通常モードへ */
+                        if (new_wx != 0x7fffffff) {
+                            sheet_slide(sht, new_wx, new_wy); /* 1度確定させる */
+                            new_wx = 0x7fffffff;
+                        }
                     }
                 }
             }
