@@ -7,6 +7,7 @@
 
 void keywin_off(struct SHEET *key_win);
 void keywin_on(struct SHEET *key_win);
+struct SHEET *open_console(struct SHTCTL *shtctl, unsigned int memtotal);
 
 void HariMain(void)
 {
@@ -14,14 +15,14 @@ void HariMain(void)
     struct SHTCTL *shtctl; /* シートの管理 */
     char s[40];
     struct FIFO32 fifo, keycmd;
-    int fifobuf[128], keycmd_buf[32], *cons_fifo[2];
+    int fifobuf[128], keycmd_buf[32];
     int mx, my, i, new_mx = -1, new_my = 0, new_wx = 0x7fffffff, new_wy = 0;
     unsigned int memtotal;
     struct MOUSE_DEC mdec; /* マウスのデータを構造体で管理（タグ：mdec） */
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
-    unsigned char *buf_back, buf_mouse[256], *buf_cons[2];
+    unsigned char *buf_back, buf_mouse[256];
     struct SHEET *sht_back, *sht_mouse, *sht_cons[2];    /* ウィンドウを4つ用意 */
-    struct TASK *task_a, *task_cons[2], *task;    /* タスクAとコンソールタスク,タスク */
+    struct TASK *task_a, *task;    /* タスクAとコンソールタスク,タスク */
     static char keytable0[0x80] = {
         0,   0,   '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '^', 0x08, 0,
         'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '@', '[', 0x0a, 0, 'A', 'S',
@@ -76,29 +77,8 @@ void HariMain(void)
     init_screen8(buf_back, binfo->scrnx, binfo->scrny); /* 背景を描画 */
 
     /* sht_cons */
-    for (i = 0; i < 2; i++) {
-        sht_cons[i] = sheet_alloc(shtctl);
-        buf_cons[i] = (unsigned char *) memman_alloc_4k(memman, 256 * 165);
-        sheet_setbuf(sht_cons[i], buf_cons[i], 256, 165, -1); /* 透明色なし */
-        make_window8(buf_cons[i], 256, 165, "console", 0);
-        make_textbox8(sht_cons[i], 8, 28, 240, 128, COL8_000000);  /* 黒のテキストボックス */
-        task_cons[i] = task_alloc();
-        task_cons[i]->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 12;   /* スタックを増やすために6->12 */
-        task_cons[i]->tss.eip = (int) &console_task;   /* console_taskを登録 */
-        task_cons[i]->tss.es = 1 * 8;
-        task_cons[i]->tss.cs = 2 * 8;
-        task_cons[i]->tss.ss = 1 * 8;
-        task_cons[i]->tss.ds = 1 * 8;
-        task_cons[i]->tss.fs = 1 * 8;
-        task_cons[i]->tss.gs = 1 * 8;
-        *((int *) (task_cons[i]->tss.esp + 4)) = (int) sht_cons[i];
-        *((int *) (task_cons[i]->tss.esp + 8)) = memtotal; /* Harimainから渡してもらうためのスタック */
-        task_run(task_cons[i], 2, 2); /* level=2, priority=2 */
-        sht_cons[i]->task = task_cons[i];
-        sht_cons[i]->flags |= 0x20; /* カーソルあり */
-        cons_fifo[i] = (int *) memman_alloc_4k(memman, 128 * 4);
-        fifo32_init(&task_cons[i]->fifo, 128, cons_fifo[i], task_cons[i]);
-    }
+    sht_cons[0] = open_console(shtctl, memtotal);
+    sht_cons[1] = 0;    /* まだ開いていない */
 
     /* sht_mouse */
     sht_mouse = sheet_alloc(shtctl);    /* マウスのシートの確保 */
@@ -108,13 +88,11 @@ void HariMain(void)
     my = (binfo->scrny - 28 -16) / 2; /* 画面中央になるy座標 */
 
     sheet_slide(sht_back,  0,  0);    /* 背景の位置指定 */
-    sheet_slide(sht_cons[1], 56,  6);   /* コンス１ */
-    sheet_slide(sht_cons[0],  8,  2);   /* コンス0 */
+    sheet_slide(sht_cons[0],  32,  4);   /* コンス0 */
     sheet_slide(sht_mouse, mx, my); /* マウスの位置指定 */
     sheet_updown(sht_back,     0); /* 背景の下敷きの高さを指定 */
-    sheet_updown(sht_cons[1],  1);  /* コンス１ */
-    sheet_updown(sht_cons[0],  2);  /* コンス0 */
-    sheet_updown(sht_mouse,    3); /* マウスの下敷きの高さを指定 */
+    sheet_updown(sht_cons[0],  1);  /* コンス0 */
+    sheet_updown(sht_mouse,    2); /* マウスの下敷きの高さを指定 */
     key_win = sht_cons[0];  /* 最初に選択されるウィンドウ */
     keywin_on(key_win);  /* 選択色の割り当て */
 
@@ -216,6 +194,15 @@ void HariMain(void)
                         io_sti();
                     }
                 }
+                if (i == 256 + 0x3c && key_shift != 0 && sht_cons[1] == 0) {
+                    sht_cons[1] = open_console(shtctl, memtotal);
+                    sheet_slide(sht_cons[1], 32, 4);
+                    sheet_updown(sht_cons[1], shtctl->top);
+                    /* 新しく作ったコンソールを入力選択状態にする（その方が親切だよね） */
+                    keywin_off(key_win);
+                    key_win = sht_cons[1];
+                    keywin_on(key_win);
+                }
                 if (i == 256 + 0x57) {   /* F11+下敷きが2枚以上 */
                     sheet_updown(shtctl->sheets[1], shtctl->top - 1);   /* arg1：背景の一個上の下敷き、arg2：マウスの一個下の下敷き */
                 }
@@ -245,7 +232,6 @@ void HariMain(void)
                     }
                     new_mx = mx;
                     new_my = my;
-                    sheet_slide(sht_mouse, mx, my);
                     if ((mdec.btn & 0x01) != 0) {
                         /* 左ボタンを押していたら、sht_winを動かす */
                         if (mmx < 0) {
@@ -290,7 +276,6 @@ void HariMain(void)
                             y = my - mmy;
                             new_wx = (mmx2 + x + 2) & ~3;
                             new_wy = new_wy + y;
-                            sheet_slide(sht, (mmx2 + x + 2) & ~3, sht->vy0 + y);
                             mmy = my;   /* 移動後の座標を更新 */
                         }
                     } else {
@@ -323,4 +308,31 @@ void keywin_on(struct SHEET *key_win)
         fifo32_put(&key_win->task->fifo, 2); /* コンソールのカーソルON */
     }
     return;
+}
+
+struct SHEET *open_console(struct SHTCTL *shtctl, unsigned int memtotal)
+{
+    struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+    struct SHEET *sht = sheet_alloc(shtctl);
+    unsigned char *buf =(unsigned char *) memman_alloc_4k(memman, 256 * 165);
+    struct TASK *task = task_alloc();
+    int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
+    sheet_setbuf(sht, buf, 256, 165, -1); /* 透明色なし */
+    make_window8(buf, 256, 165, "console", 0);
+    make_textbox8(sht, 8, 28, 240, 128, COL8_000000);  /* 黒のテキストボックス */
+    task->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 12;   /* スタックを増やすために6->12 */
+    task->tss.eip = (int) &console_task;   /* console_taskを登録 */
+    task->tss.es = 1 * 8;
+    task->tss.cs = 2 * 8;
+    task->tss.ss = 1 * 8;
+    task->tss.ds = 1 * 8;
+    task->tss.fs = 1 * 8;
+    task->tss.gs = 1 * 8;
+    *((int *) (task->tss.esp + 4)) = (int) sht;
+    *((int *) (task->tss.esp + 8)) = memtotal; /* Harimainから渡してもらうためのスタック */
+    task_run(task, 2, 2); /* level=2, priority=2 */
+    sht->task = task;
+    sht->flags |= 0x20; /* カーソルあり */
+    fifo32_init(&task->fifo, 128, cons_fifo, task);
+    return sht;
 }
