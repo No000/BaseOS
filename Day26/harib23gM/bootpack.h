@@ -230,7 +230,7 @@ struct TASK {
     struct FIFO32 fifo;   /* タスクに渡すFIFOバッファ */
     struct TSS32 tss;   /* バックアップする各種レジスタ */
     struct CONSOLE *cons;   /* コンソールデータ */
-    int ds_base;    /* コンソールタスクごとのデータセグメント */
+    int ds_base, cons_stack;    /* コンソールタスクごとのデータセグメント */
 };
 struct TASKLEVEL {
     int running; /* 動作しているタスクの数 */
@@ -274,6 +274,7 @@ void cmd_mem(struct CONSOLE *cons, int memtotal);
 void cmd_cls(struct CONSOLE *cons);
 void cmd_dir(struct CONSOLE *cons);
 void cmd_type(struct CONSOLE *cons, int *fat, char *cmdline);
+void cmd_exit(struct CONSOLE *cons, int *fat);
 int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline);
 int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax); /* 機能番号対応文字表示API */
 int *inthandler0d(int *esp);
