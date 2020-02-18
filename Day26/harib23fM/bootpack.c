@@ -21,7 +21,7 @@ void HariMain(void)
     struct MOUSE_DEC mdec; /* マウスのデータを構造体で管理（タグ：mdec） */
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
     unsigned char *buf_back, buf_mouse[256];
-    struct SHEET *sht_back, *sht_mouse, *sht_cons[2];    /* ウィンドウを4つ用意 */
+    struct SHEET *sht_back, *sht_mouse;    /* ウィンドウを4つ用意 */
     struct TASK *task_a, *task;    /* タスクAとコンソールタスク,タスク */
     static char keytable0[0x80] = {
         0,   0,   '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '^', 0x08, 0,
@@ -77,8 +77,7 @@ void HariMain(void)
     init_screen8(buf_back, binfo->scrnx, binfo->scrny); /* 背景を描画 */
 
     /* sht_cons */
-    sht_cons[0] = open_console(shtctl, memtotal);
-    sht_cons[1] = 0;    /* まだ開いていない */
+    key_win = open_console(shtctl, memtotal);
 
     /* sht_mouse */
     sht_mouse = sheet_alloc(shtctl);    /* マウスのシートの確保 */
@@ -88,12 +87,11 @@ void HariMain(void)
     my = (binfo->scrny - 28 -16) / 2; /* 画面中央になるy座標 */
 
     sheet_slide(sht_back,  0,  0);    /* 背景の位置指定 */
-    sheet_slide(sht_cons[0],  32,  4);   /* コンス0 */
+    sheet_slide(key_win,  32,  4);   /* コンス0 */
     sheet_slide(sht_mouse, mx, my); /* マウスの位置指定 */
     sheet_updown(sht_back,     0); /* 背景の下敷きの高さを指定 */
-    sheet_updown(sht_cons[0],  1);  /* コンス0 */
-    sheet_updown(sht_mouse,    2); /* マウスの下敷きの高さを指定 */
-    key_win = sht_cons[0];  /* 最初に選択されるウィンドウ */
+    sheet_updown(key_win,   1);  /* コンス0 */
+    sheet_updown(sht_mouse, 2); /* マウスの下敷きの高さを指定 */
     keywin_on(key_win);  /* 選択色の割り当て */
 
     /* 最初にキーボードの状態との食い違いが無いように、設定しておくこと */
@@ -194,13 +192,12 @@ void HariMain(void)
                         io_sti();
                     }
                 }
-                if (i == 256 + 0x3c && key_shift != 0 && sht_cons[1] == 0) {
-                    sht_cons[1] = open_console(shtctl, memtotal);
-                    sheet_slide(sht_cons[1], 32, 4);
-                    sheet_updown(sht_cons[1], shtctl->top);
+                if (i == 256 + 0x3c && key_shift != 0) {
                     /* 新しく作ったコンソールを入力選択状態にする（その方が親切だよね） */
                     keywin_off(key_win);
-                    key_win = sht_cons[1];
+                    key_win = open_console(shtctl, memtotal);
+                    sheet_slide(key_win, 32, 4);
+                    sheet_updown(key_win, shtctl->top);
                     keywin_on(key_win);
                 }
                 if (i == 256 + 0x57) {   /* F11+下敷きが2枚以上 */
