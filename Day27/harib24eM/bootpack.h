@@ -106,9 +106,6 @@ void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
 /* int.c */
 /* KEYBUFは削除 */
 void init_pic(void);
-
-void inthandler27(int *esp);
-
 #define PIC0_ICW1        0x0020
 #define PIC0_OCW2        0x0020
 #define PIC0_IMR         0x0021
