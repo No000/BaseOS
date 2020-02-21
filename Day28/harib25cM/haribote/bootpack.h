@@ -230,6 +230,8 @@ struct TASK {
     struct SEGMENT_DESCRIPTOR ldt[2]; /* LDT */
     struct CONSOLE *cons;   /* コンソールデータ */
     int ds_base, cons_stack;    /* コンソールタスクごとのデータセグメント */
+    struct FILEHANDLE *fhandle;
+    int *fat;
 };
 struct TASKLEVEL {
     int running; /* 動作しているタスクの数 */
@@ -263,6 +265,11 @@ struct CONSOLE {
     struct SHEET *sht;
     int cur_x, cur_y, cur_c;
     struct TIMER *timer;    /* 点滅用等 */
+};
+struct FILEHANDLE { /* ファイルハンドラ */
+    char *buf;
+    int size;
+    int pos;
 };
 void console_task(struct SHEET *sheet, int memtotal); /* コンソール用のタスク */
 void cons_putchar(struct CONSOLE *cons, int chr, char move);

@@ -10,7 +10,9 @@ void console_task(struct SHEET *sheet, int memtotal)
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
     int i, *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
     struct CONSOLE cons;
+    struct FILEHANDLE fhandle[8];
     char cmdline[30];    /* cmdline：キー入力保管バッファ */
+
     cons.sht = sheet;
     cons.cur_x =  8;
     cons.cur_y = 28;
@@ -23,6 +25,11 @@ void console_task(struct SHEET *sheet, int memtotal)
         timer_settime(cons.timer, 50);   /* カーソル用（0.5秒） */
     }
     file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
+    for (i = 0; i < 8; i++) {
+        fhandle[i].buf = 0; /* 未使用マーク */
+    }
+    task->fhandle = fhandle;
+    task->fat = fat;
 
     /* プロンプトの表示 */
     cons_putchar(&cons, '>', 1);
@@ -53,8 +60,8 @@ void console_task(struct SHEET *sheet, int memtotal)
                 cons.cur_c = COL8_FFFFFF;
             }
             if (i == 3) {   /* カーソルOFF */
-                if (sheet != 0) {
-                    boxfill8(sheet->buf, sheet->bxsize, COL8_000000,
+                if (cons.sht != 0) {
+                    boxfill8(cons.sht->buf, cons.sht->bxsize, COL8_000000,
                         cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 15);
                 }
                 cons.cur_c = -1;
@@ -77,7 +84,7 @@ void console_task(struct SHEET *sheet, int memtotal)
                     cmdline[cons.cur_x / 8 - 2] = 0;
                     cons_newline(&cons);
                     cons_runcmd(cmdline, &cons, fat, memtotal);  /* コマンド実行 */
-                    if (sheet == 0) {
+                    if (cons.sht == 0) {
                         cmd_exit(&cons, fat);
                     }
                     /* プロンプト表示 */
@@ -92,12 +99,12 @@ void console_task(struct SHEET *sheet, int memtotal)
                 }
             }
             /* カーソルの再表示 */
-            if (sheet != 0) {
+            if (cons.sht != 0) {
                 if (cons.cur_c >= 0) {
-                    boxfill8(sheet->buf, sheet->bxsize, cons.cur_c,
+                    boxfill8(cons.sht->buf, cons.sht->bxsize, cons.cur_c,
                         cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 15);
                 }
-                sheet_refresh(sheet, cons.cur_x, cons.cur_y, cons.cur_x + 8, cons.cur_y + 16);
+                sheet_refresh(cons.sht, cons.cur_x, cons.cur_y, cons.cur_x + 8, cons.cur_y + 16);
             }
         }
     }
@@ -385,6 +392,12 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
                     sheet_free(sht);    /* 閉じる */
                 }
             }
+            for (i = 0; i < 8; i++) {
+                if (task->fhandle[i].buf != 0) {
+                    memman_free_4k(memman, (int) task->fhandle[i].buf, task->fhandle[i].size);
+                    task->fhandle[i].buf = 0; /* 未使用マーク */
+                }
+            }
             timer_cancelall(&task->fifo);
             memman_free_4k(memman, (int) q, segsiz);
         } else {
@@ -411,6 +424,9 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
     /* reg[0] : EDI,   reg[1] : ESI,   reg[2] : EBP,   reg[3] : ESP */
     /* reg[4] : EBX,   reg[5] : EDX,   reg[6] : ECX,   reg[7] : EAX */
     int i;
+    struct FILEINFO *finfo;
+    struct FILEHANDLE *fh;
+    struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 
     if (edx == 1) {
         cons_putchar(cons, eax & 0xff, 1);
@@ -482,7 +498,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
             }
             i = fifo32_get(&task->fifo);
             io_sti();
-            if (i <= 1) {   /* カーソル用タイマ */
+            if (i <= 1 && cons->sht != 0) {   /* カーソル用タイマ */
                 /* アプリ実行中はカーソルが出ないので、いつも次は表示用の1を注文しておく */
                 timer_init(cons->timer, &task->fifo, 1);    /* 次は1を */
                 timer_settime(cons->timer, 50);
@@ -526,6 +542,63 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
             i = io_in8(0x61);
             io_out8(0x61, (i | 0x03) & 0x0f);
         }
+    } else if (edx == 21) {
+        for (i = 0; i < 8; i++) {
+            if (task->fhandle[i].buf == 0) {
+                break;  /* 未使用なんで… */
+            }
+        }
+        fh = &task->fhandle[i]; /* アド */
+        reg[7] = 0;
+        if (i < 8) {
+            finfo = file_search((char *) ebx + ds_base,
+                (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+            if (finfo != 0) {
+                reg[7] = (int) fh;
+                fh->buf = (char *) memman_alloc_4k(memman, finfo->size);
+                fh->size = finfo->size;
+                fh->pos = 0;
+                file_loadfile(finfo->clustno, finfo->size, fh->buf, task->fat, (char *) (ADR_DISKIMG + 0x003e00));
+            }
+        }
+    } else if (edx == 22) { /* クローズ */
+        fh = (struct FILEHANDLE *) eax;
+        memman_free_4k(memman, (int) fh->buf, fh->size);
+        fh->buf = 0;
+    } else if (edx == 23) { /* シーク */
+        fh = (struct FILEHANDLE *) eax;
+        if (ecx == 0) { /* ファイルの先頭 */
+            fh->pos = ebx;
+        } else if (ecx == 1) {  /* 現在のｱｸｾｽ位置 */
+            fh->pos += ebx;
+        } else if (ecx == 2) {  /* ファイルの終端 */
+            fh->pos = fh->size + ebx;
+        }
+        if (fh->pos < 0) {  /* 例外 */
+            fh->pos = 0;
+        }
+        if (fh->pos > fh->size) {   /* 例外 */
+            fh->pos = fh->size;
+        }
+    } else if (edx == 24) {  /* ファイルサイズの取得 */
+        fh = (struct FILEHANDLE *) eax;
+        if (ecx == 0) {     /* 普通のファイルサイズ */
+            reg[7] = fh->size;
+        } else if (ecx == 1) {   /* 現在の読み込み位置はファイル先頭から何バイト目か */
+            reg[7] = fh->pos;
+        } else if (ecx == 2) {
+            reg[7] = fh->pos - fh->size;
+        }
+    } else if (edx == 25) {     /* ファイルの読み込み */
+            fh = (struct FILEHANDLE *) eax; /* ファイルハンドル */
+            for (i = 0; i < ecx; i++) { /* 最大読み込みバイト数 */
+                if (fh->pos == fh->size) {
+                    break;
+                }
+                *((char *) ebx + ds_base + i) = fh->buf[fh->pos];
+                fh->pos++;
+            }
+            reg[7] = i;
     }
     return 0;
 }
