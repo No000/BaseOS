@@ -232,6 +232,7 @@ struct TASK {
     int ds_base, cons_stack;    /* コンソールタスクごとのデータセグメント */
     struct FILEHANDLE *fhandle;
     int *fat;
+    char *cmdline;  /* hrb_apiのため */
 };
 struct TASKLEVEL {
     int running; /* 動作しているタスクの数 */
