@@ -233,6 +233,7 @@ struct TASK {
     struct FILEHANDLE *fhandle;
     int *fat;
     char *cmdline;  /* hrb_apiのため */
+    char langmode;  /* 言語モード(タスク管理なので、コンソールごとに変更可) */
 };
 struct TASKLEVEL {
     int running; /* 動作しているタスクの数 */
@@ -285,6 +286,7 @@ void cmd_type(struct CONSOLE *cons, int *fat, char *cmdline);
 void cmd_exit(struct CONSOLE *cons, int *fat);
 void cmd_start(struct CONSOLE *cons, char *cmdline, int memtotal);
 void cmd_ncst(struct CONSOLE *cons, char *cmdline, int memtotal);
+void cmd_langmode(struct CONSOLE *cons, char *cmdline);
 int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline);
 int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax); /* 機能番号対応文字表示API */
 int *inthandler0d(int *esp);

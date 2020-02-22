@@ -47,6 +47,10 @@ void HariMain(void)
     int key_shift = 0, key_leds = (binfo->leds >> 4) & 7, keycmd_wait = -1; /* key_to：ウィンドウ, key_shift：シフト, key_les：SL・NL・CL */
     int j, x, y, mmx = -1, mmy = -1, mmx2 = 0;    /* ウィンドウupdpwn */
     struct SHEET *sht = 0, *key_win, *sht2;
+    int *fat;
+    unsigned char *nihongo;
+    struct FILEINFO *finfo;
+    extern char hankaku[4096];
 
     init_gdtidt(); /* GDT、IDTの初期化 */
     init_pic(); /* PICの初期か */
@@ -71,6 +75,7 @@ void HariMain(void)
     fifo.task = task_a;
     task_run(task_a, 1, 2); /* レベルは１, priorityは0？ */
     *((int *) 0x0fe4) = (int) shtctl;
+    task_a->langmode = 0;   /* 初期値は英語 */
 
     /* sht_back */
     sht_back  = sheet_alloc(shtctl);    /* 背景のシートの確保 */
@@ -99,6 +104,24 @@ void HariMain(void)
     /* 最初にキーボードの状態との食い違いが無いように、設定しておくこと */
     fifo32_put(&keycmd, KEYCMD_LED);
     fifo32_put(&keycmd, key_leds);
+    /* nihongo.fntの読み込み */
+
+    nihongo = (unsigned char *) memman_alloc_4k(memman, 16 * 256 + 32 * 94 * 47);    /* 半角16、全角32 */
+    fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+    file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
+    finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+    if (finfo != 0) {
+        file_loadfile(finfo->clustno, finfo->size, nihongo, fat, (char *) (ADR_DISKIMG + 0x003e00));
+    } else {
+        for (i = 0; i < 16 * 256; i++) {
+            nihongo[i] = hankaku[i]; /* フォントが無かったので半角部分をコピー */
+        }
+        for (i = 16 * 256; i < 16 * 256 + 32 * 94 * 47; i++) {
+            nihongo[i] = 0xff; /* フォントがなかったので全角部分を0xffで埋め尽くす */
+        }
+    }
+    *((int *) 0x0fe8) = (int) nihongo;
+    memman_free_4k(memman, (int) fat, 4 * 2880);
     /* キーボードとマウスの許可は上に移動 */
     for (;;) {
         if (fifo32_status(&keycmd) > 0 && keycmd_wait < 0) {
