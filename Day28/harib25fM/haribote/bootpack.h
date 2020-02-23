@@ -1,6 +1,5 @@
 /* asmhead.nas */
-/*構造体の宣言*/
-struct BOOTINFO { /* 0x0ff0-0x0fff */
+struct BOOTINFO { /* 0x0ff0-0x0fff(構造体の宣言) */
     char cyls; /* ブートセクタがどこまでディスクを呼んだか */
     char leds; /* ブート時のキーボードのLED状態 */
     char vmode; /* ビデオモード  何ビットカラーか */
@@ -56,7 +55,8 @@ void init_screen8(char *vram, int x, int y);
 void putfont8(char *vram, int xsize, int x, int y, char c, char *font);
 void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s);
 void init_mouse_cursor8(char *mouse, char bc);
-void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
+void putblock8_8(char *vram, int vxsize, int pxsize,
+    int pysize, int px0, int py0, char *buf, int bxsize);
 #define COL8_000000     0
 #define COL8_FF0000     1
 #define COL8_00FF00     2
@@ -75,20 +75,17 @@ void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py
 #define COL8_848484     15
 
 /* dsctbl.c */
-/* GDTの中身（2*2 + 1*2 + 2 = 8バイト） */
-struct SEGMENT_DESCRIPTOR {
+struct SEGMENT_DESCRIPTOR { /* GDTの中身（2*2 + 1*2 + 2 = 8バイト） */
     short limit_low, base_low;
     char base_mid, access_right;
     char limit_high, base_high;
 };
-/* IDTの中身（2*2 + 1*2 + 2 = 8バイト） */
-struct GATE_DESCRIPTOR{
+struct GATE_DESCRIPTOR { /* IDTの中身（2*2 + 1*2 + 2 = 8バイト） */
     short offset_low, selector;
     char dw_count, access_right;
     short offset_high;
 };
-/* ヘッダー関連 */
-void init_gdtidt(void);
+void init_gdtidt(void); /* ヘッダー関連 */
 void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar);
 void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
 #define ADR_IDT     0x0026f800
@@ -103,8 +100,7 @@ void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
 #define AR_TSS32      0x0089
 #define AR_INTGATE32  0x008e
 
-/* int.c */
-/* KEYBUFは削除 */
+/* int.c(KEYBUFは削除) */
 void init_pic(void);
 #define PIC0_ICW1        0x0020
 #define PIC0_OCW2        0x0020
@@ -136,22 +132,16 @@ void enable_mouse(struct FIFO32 *fifo, int data0, struct MOUSE_DEC *mdec);
 int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat);
 
 /* memory.c */
-/* メモリ管理用 */
-#define MEMMAN_FREES    4090    /*  */
+#define MEMMAN_FREES    4090    /* メモリ管理用 */
 #define MEMMAN_ADDR     0x003c0000
-/* Freeのアドレスとサイズ管理 */
-
-struct FREEINFO {       /* あき情報 */
+struct FREEINFO {       /* あき情報(Freeのアドレスとサイズ管理) */
     unsigned int addr, size;    /* 各種、addr:アドレス, size:大きさ */
 };
-/* 失ったサイズやどれだけFreeかの管理 */
-struct MEMMAN {         /* メモリ管理 */
+struct MEMMAN {         /* メモリ管理(失ったサイズやどれだけFreeかの管理) */
     int frees, maxfrees, lostsize, losts;   /* 関数memman_initを参照 */
     struct FREEINFO free[MEMMAN_FREES];     /* 配列で表にする */
 };
-
-/* 新しく追加する関数 */
-unsigned int memtest(unsigned int start, unsigned int end);
+unsigned int memtest(unsigned int start, unsigned int end); /* 新しく追加する関数 */
 void memman_init(struct MEMMAN *man);
 unsigned int memman_total(struct MEMMAN *man);
 unsigned int memman_alloc(struct MEMMAN *man, unsigned int size);
@@ -233,7 +223,7 @@ struct TASK {
     struct FILEHANDLE *fhandle;
     int *fat;
     char *cmdline;  /* hrb_apiのため */
-    char langmode;  /* 言語モード(タスク管理なので、コンソールごとに変更可) */
+    unsigned char langmode, langbyte1;  /* 言語モード,全角1バイト目 */
 };
 struct TASKLEVEL {
     int running; /* 動作しているタスクの数 */

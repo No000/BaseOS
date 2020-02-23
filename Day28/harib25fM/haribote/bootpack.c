@@ -358,7 +358,7 @@ void keywin_on(struct SHEET *key_win)
 }
 
 
-struct TASK *open_constask(struct SHEET * sht, unsigned int memtotal)
+struct TASK *open_constask(struct SHEET *sht, unsigned int memtotal)
 {
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
     struct TASK *task = task_alloc();
