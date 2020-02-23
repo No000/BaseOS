@@ -1,7 +1,7 @@
 ; haribote-ipl
 ; TAB=4
 
-CYLS    EQU     10      ; どこまで読み込むか
+CYLS    EQU     20      ; どこまで読み込むか
 
     ORG     0x7c00      ; このプログラムがどこに読み込まれるか
 
@@ -69,7 +69,7 @@ next:
     MOV     CL,1
     ADD     DH,1
     CMP     DH,2
-    JB      readloop        ; DH　＜　２だったらreadloopへ
+    JB      readloop        ; DH ＜ ２だったらreadloopへ
     MOV     DH,0
     ADD     CH,1
     CMP     CH,CYLS
