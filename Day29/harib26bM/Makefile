@@ -50,9 +50,9 @@ haribote.img : haribote/ipl20.bin haribote/haribote.sys Makefile \
 		copy from:typeipl/typeipl.hrb to:@: \
 		copy from:type/type.hrb to:@: \
 		copy from:iroha/iroha.hrb to:@: \
+		copy from:chklang/chklang.hrb to:@: \
 		copy from:euc.txt to:@: \
 		copy from:nihongo/nihongo.fnt to:@: \
-		copy from:chklang/chklang.hrb to:@: \
 		imgout:haribote.img
 
 # コマンド
